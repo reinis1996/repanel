@@ -119,8 +119,45 @@ postconf -e \
   "smtpd_sasl_auth_enable = yes" \
   "smtpd_recipient_restrictions = permit_mynetworks permit_sasl_authenticated reject_unauth_destination"
 
-cat > /etc/dovecot/conf.d/99-repanel.conf <<EOF
-# Managed by RePanel
+# Dovecot 2.4 (Debian 13+, Ubuntu 25.10+) renamed mail_location and changed
+# the passdb/userdb syntax; write config matching the installed version.
+DOVECOT_VER="$(dovecot --version 2>/dev/null | awk '{print $1}')"
+case "$DOVECOT_VER" in
+2.4*|2.5*|3.*)
+  cat > /etc/dovecot/conf.d/99-repanel.conf <<EOF
+# Managed by RePanel (Dovecot >= 2.4 syntax)
+mail_driver = maildir
+mail_path = /var/mail/vhosts/%{user | domain}/%{user | username}
+mail_uid = vmail
+mail_gid = vmail
+first_valid_uid = 5000
+last_valid_uid = 5000
+
+passdb passwd-file {
+  passwd_file_path = $CONF_DIR/mail/passwd
+  default_password_scheme = SHA512-CRYPT
+}
+
+userdb static {
+  fields {
+    uid = vmail
+    gid = vmail
+    home = /var/mail/vhosts/%{user | domain}/%{user | username}
+  }
+}
+
+service auth {
+  unix_listener /var/spool/postfix/private/auth {
+    mode = 0660
+    user = postfix
+    group = postfix
+  }
+}
+EOF
+  ;;
+*)
+  cat > /etc/dovecot/conf.d/99-repanel.conf <<EOF
+# Managed by RePanel (Dovecot 2.3 syntax)
 mail_location = maildir:/var/mail/vhosts/%d/%n
 mail_uid = vmail
 mail_gid = vmail
@@ -144,9 +181,13 @@ service auth {
   }
 }
 EOF
+  ;;
+esac
 # dovecot needs read access to the passwd file
 chgrp dovecot "$CONF_DIR/mail/passwd" 2>/dev/null || true
-systemctl restart dovecot postfix
+# Don't abort the whole installation if mail needs manual attention.
+systemctl restart dovecot || say "WARNING: dovecot failed to start — check 'journalctl -u dovecot' after installation"
+systemctl restart postfix
 
 # ---- ProFTPD ---------------------------------------------------------------
 say "Configuring ProFTPD"

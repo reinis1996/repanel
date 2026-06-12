@@ -35,7 +35,9 @@ func RebuildMailMaps(mailDir string, domains []string, boxes []models.Mailbox, a
 
 	// postfix: mailbox map (address -> maildir path relative to virtual_mailbox_base)
 	var vm strings.Builder
-	// dovecot: passwd-file (user:{SHA512-CRYPT}hash::::::userdb_quota_rule=*:storage=...M)
+	// dovecot: passwd-file (user:{SHA512-CRYPT}hash). Extra userdb fields are
+	// intentionally omitted: the 2.3 syntax for them breaks Dovecot 2.4+, and
+	// quota is not enforced until the quota plugin is wired up.
 	var pw strings.Builder
 	for _, m := range boxes {
 		user, domain, ok := strings.Cut(m.Address, "@")
@@ -43,8 +45,7 @@ func RebuildMailMaps(mailDir string, domains []string, boxes []models.Mailbox, a
 			continue
 		}
 		fmt.Fprintf(&vm, "%s %s/%s/\n", m.Address, domain, user)
-		fmt.Fprintf(&pw, "%s:{SHA512-CRYPT}%s::::::userdb_quota_rule=*:storage=%dM\n",
-			m.Address, m.PasswordHash, m.QuotaMB)
+		fmt.Fprintf(&pw, "%s:{SHA512-CRYPT}%s\n", m.Address, m.PasswordHash)
 	}
 	if err := writeAndPostmap(filepath.Join(mailDir, "virtual_mailboxes"), vm.String()); err != nil {
 		return err
