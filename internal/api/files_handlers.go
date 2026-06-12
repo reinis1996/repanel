@@ -8,8 +8,8 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/repanel/repanel/internal/models"
-	"github.com/repanel/repanel/internal/system"
+	"github.com/reinis1996/repanel/internal/models"
+	"github.com/reinis1996/repanel/internal/system"
 )
 
 // jailFor returns the directory a user's file manager is confined to:

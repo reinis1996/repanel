@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/repanel/repanel/internal/models"
-	"github.com/repanel/repanel/internal/system"
+	"github.com/reinis1996/repanel/internal/models"
+	"github.com/reinis1996/repanel/internal/system"
 )
 
 func (s *Server) handleCertList(w http.ResponseWriter, r *http.Request, u *models.User) {

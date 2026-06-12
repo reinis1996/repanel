@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/repanel/repanel/internal/models"
+	"github.com/reinis1996/repanel/internal/models"
 )
 
 // Mail integration follows the classic virtual-mailbox layout:

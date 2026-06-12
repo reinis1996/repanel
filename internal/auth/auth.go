@@ -10,8 +10,8 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/repanel/repanel/internal/database"
-	"github.com/repanel/repanel/internal/models"
+	"github.com/reinis1996/repanel/internal/database"
+	"github.com/reinis1996/repanel/internal/models"
 )
 
 const CookieName = "repanel_session"

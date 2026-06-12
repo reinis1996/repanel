@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/repanel/repanel/internal/models"
-	"github.com/repanel/repanel/internal/system"
+	"github.com/reinis1996/repanel/internal/models"
+	"github.com/reinis1996/repanel/internal/system"
 )
 
 var validDBInput = regexp.MustCompile(`^[A-Za-z0-9_]{1,48}$`)

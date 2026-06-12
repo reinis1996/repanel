@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/repanel/repanel/internal/auth"
-	"github.com/repanel/repanel/internal/models"
-	"github.com/repanel/repanel/internal/system"
+	"github.com/reinis1996/repanel/internal/auth"
+	"github.com/reinis1996/repanel/internal/models"
+	"github.com/reinis1996/repanel/internal/system"
 )
 
 func (s *Server) handleDomainList(w http.ResponseWriter, r *http.Request, u *models.User) {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/repanel/repanel/internal/models"
+	"github.com/reinis1996/repanel/internal/models"
 )
 
 // vhostTemplate renders an nginx server block per domain, in the style of the

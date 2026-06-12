@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/repanel/repanel/internal/models"
-	"github.com/repanel/repanel/internal/system"
+	"github.com/reinis1996/repanel/internal/models"
+	"github.com/reinis1996/repanel/internal/system"
 )
 
 // FTP accounts are real (login-only, nologin shell) unix users homed inside

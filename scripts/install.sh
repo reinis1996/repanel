@@ -1,7 +1,7 @@
 #!/bin/sh
 # RePanel installer for a fresh Debian 12+/Ubuntu 22.04+ server.
 #
-#   curl -fsSL https://raw.githubusercontent.com/repanel/repanel/main/scripts/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/main/scripts/install.sh | sh
 #
 # Installs the full hosting stack (nginx, PHP-FPM, MariaDB, BIND, Postfix,
 # Dovecot, ProFTPD, certbot, ufw, fail2ban), wires it to RePanel and starts

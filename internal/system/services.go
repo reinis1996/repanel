@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/repanel/repanel/internal/models"
+	"github.com/reinis1996/repanel/internal/models"
 )
 
 // ManagedServices lists the units the panel knows how to supervise,

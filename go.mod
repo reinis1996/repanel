@@ -1,4 +1,4 @@
-module github.com/repanel/repanel
+module github.com/reinis1996/repanel
 
 go 1.26.3
 

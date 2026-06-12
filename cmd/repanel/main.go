@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/repanel/repanel/internal/api"
-	"github.com/repanel/repanel/internal/config"
-	"github.com/repanel/repanel/internal/database"
-	"github.com/repanel/repanel/internal/system"
-	"github.com/repanel/repanel/web"
+	"github.com/reinis1996/repanel/internal/api"
+	"github.com/reinis1996/repanel/internal/config"
+	"github.com/reinis1996/repanel/internal/database"
+	"github.com/reinis1996/repanel/internal/system"
+	"github.com/reinis1996/repanel/web"
 )
 
 var version = "0.1.0"

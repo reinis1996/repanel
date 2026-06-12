@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/repanel/repanel/internal/models"
-	"github.com/repanel/repanel/internal/system"
+	"github.com/reinis1996/repanel/internal/models"
+	"github.com/reinis1996/repanel/internal/system"
 )
 
 // rebuildMail regenerates all postfix/dovecot maps from database state.

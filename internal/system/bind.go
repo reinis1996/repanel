@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/repanel/repanel/internal/models"
+	"github.com/reinis1996/repanel/internal/models"
 )
 
 // DefaultZoneRecords returns the records a freshly created domain gets,

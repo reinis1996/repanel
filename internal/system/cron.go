@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/repanel/repanel/internal/models"
+	"github.com/reinis1996/repanel/internal/models"
 )
 
 const cronFile = "/etc/cron.d/repanel"

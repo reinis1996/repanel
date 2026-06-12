@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/repanel/repanel/internal/auth"
-	"github.com/repanel/repanel/internal/config"
-	"github.com/repanel/repanel/internal/database"
-	"github.com/repanel/repanel/internal/models"
+	"github.com/reinis1996/repanel/internal/auth"
+	"github.com/reinis1996/repanel/internal/config"
+	"github.com/reinis1996/repanel/internal/database"
+	"github.com/reinis1996/repanel/internal/models"
 )
 
 type Server struct {

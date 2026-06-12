@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/repanel/repanel/internal/auth"
-	"github.com/repanel/repanel/internal/models"
+	"github.com/reinis1996/repanel/internal/auth"
+	"github.com/reinis1996/repanel/internal/models"
 )
 
 var validUsername = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_.-]{2,31}$`)

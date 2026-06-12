@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/repanel/repanel/internal/models"
+	"github.com/reinis1996/repanel/internal/models"
 )
 
 var (

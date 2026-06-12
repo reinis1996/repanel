@@ -23,7 +23,7 @@
 On a **fresh** Debian 12+ / Ubuntu 22.04+ server, as root:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/repanel/repanel/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/main/scripts/install.sh | sh
 ```
 
 Then open `https://<server-ip>:8443` and create the administrator account. The installer sets up nginx, PHP-FPM, MariaDB, BIND, Postfix, Dovecot, ProFTPD, certbot, ufw and fail2ban, and wires them all to the panel.
@@ -35,7 +35,7 @@ Then open `https://<server-ip>:8443` and create the administrator account. The i
 Requires Go ≥ 1.26 and Node ≥ 20.
 
 ```sh
-git clone https://github.com/repanel/repanel
+git clone https://github.com/reinis1996/repanel
 cd repanel
 make build          # builds web UI + linux binary into ./dist/
 ```
