@@ -1,6 +1,6 @@
 import { Globe, Mail, Database, Server, Users } from 'lucide-react'
 import { useFetch, formatUptime } from '../api'
-import type { SystemInfo, ServiceStatus } from '../types'
+import type { SystemInfo, ServiceStatus, Usage } from '../types'
 import { Card, PageHeader, Spinner, ErrorBanner, Meter, Badge } from '../components/ui'
 import { useAuth } from '../App'
 
@@ -17,6 +17,8 @@ interface DashboardData {
 export default function Dashboard() {
   const { user } = useAuth()
   const { data, error, loading } = useFetch<DashboardData>('/api/dashboard')
+  const usage = useFetch<Usage[]>('/api/usage')
+  const myUsage = (usage.data ?? []).find((x) => x.user_id === user!.id)
 
   if (loading) return <Spinner />
   if (error) return <ErrorBanner message={error} />
@@ -63,6 +65,24 @@ export default function Dashboard() {
             </div>
           </div>
         </Card>
+
+        {myUsage && (
+          <Card title="My disk usage">
+            <div className="space-y-4">
+              <Meter
+                label={myUsage.disk_quota_mb > 0 ? 'Total (quota)' : 'Total (no quota)'}
+                used={myUsage.total_mb}
+                total={myUsage.disk_quota_mb > 0 ? myUsage.disk_quota_mb : Math.max(myUsage.total_mb, 1)}
+                unit="MB"
+              />
+              <div className="grid grid-cols-3 gap-3 text-sm pt-2 border-t border-slate-100">
+                <Info label="Web files" value={`${myUsage.web_mb.toFixed(1)} MB`} />
+                <Info label="Mail" value={`${myUsage.mail_mb.toFixed(1)} MB`} />
+                <Info label="Databases" value={`${myUsage.db_mb.toFixed(1)} MB`} />
+              </div>
+            </div>
+          </Card>
+        )}
 
         {data.services && (
           <Card title="Services">

@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Plus, KeyRound, Trash2, Ban, CircleCheck } from 'lucide-react'
+import { Plus, KeyRound, Trash2, Ban, CircleCheck, HardDrive } from 'lucide-react'
 import { api, useFetch, formatDate } from '../api'
-import type { User } from '../types'
+import type { User, Usage } from '../types'
 import { useAuth } from '../App'
 import {
   Btn, Card, PageHeader, Table, Td, Modal, Field, Input, Select,
@@ -11,8 +11,12 @@ import {
 export default function UsersPage() {
   const { user: me } = useAuth()
   const { data, error, loading, reload } = useFetch<User[]>('/api/users')
+  const usage = useFetch<Usage[]>('/api/usage')
+  const usageBy = new Map((usage.data ?? []).map((x) => [x.user_id, x]))
   const [addOpen, setAddOpen] = useState(false)
   const [pwFor, setPwFor] = useState<User | null>(null)
+  const [quotaFor, setQuotaFor] = useState<User | null>(null)
+  const [quota, setQuota] = useState(0)
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -46,6 +50,22 @@ export default function UsersPage() {
       toast('Password updated')
       setPwFor(null)
       setPassword('')
+    } catch (err) {
+      toast((err as Error).message, 'err')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const saveQuota = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!quotaFor) return
+    setBusy(true)
+    try {
+      await api.put(`/api/users/${quotaFor.id}`, { disk_quota_mb: quota })
+      toast(quota > 0 ? `Quota set to ${quota} MB` : 'Quota removed (unlimited)')
+      setQuotaFor(null)
+      reload()
     } catch (err) {
       toast((err as Error).message, 'err')
     } finally {
@@ -94,7 +114,7 @@ export default function UsersPage() {
         {!data?.length ? (
           <Empty title="No users" />
         ) : (
-          <Table head={['Username', 'Email', 'Role', 'Status', 'Created', '']}>
+          <Table head={['Username', 'Email', 'Role', 'Disk', 'Status', 'Created', '']}>
             {data.map((u) => (
               <tr key={u.id} className="hover:bg-slate-50/60">
                 <Td className="font-medium">
@@ -105,11 +125,27 @@ export default function UsersPage() {
                 <Td>
                   <Badge color={roleColor(u.role)}>{u.role}</Badge>
                 </Td>
+                <Td className="whitespace-nowrap text-slate-600">
+                  {usageBy.get(u.id) ? `${usageBy.get(u.id)!.total_mb.toFixed(0)} MB` : '…'}
+                  <span className="text-slate-400"> / {u.disk_quota_mb > 0 ? `${u.disk_quota_mb} MB` : '∞'}</span>
+                </Td>
                 <Td>{u.suspended ? <Badge color="red">suspended</Badge> : <Badge color="green">active</Badge>}</Td>
                 <Td className="text-slate-500">{formatDate(u.created_at)}</Td>
                 <Td className="text-right whitespace-nowrap">
                   {u.id !== me!.id && (
                     <>
+                      <Btn
+                        size="sm"
+                        variant="secondary"
+                        className="mr-2"
+                        title="Disk quota"
+                        onClick={() => {
+                          setQuotaFor(u)
+                          setQuota(u.disk_quota_mb)
+                        }}
+                      >
+                        <HardDrive size={13} />
+                      </Btn>
                       <Btn size="sm" variant="secondary" className="mr-2" onClick={() => setPwFor(u)}>
                         <KeyRound size={13} />
                       </Btn>
@@ -155,6 +191,22 @@ export default function UsersPage() {
             </Btn>
             <Btn type="submit" disabled={busy}>
               Create
+            </Btn>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={!!quotaFor} title={`Disk quota — ${quotaFor?.username ?? ''}`} onClose={() => setQuotaFor(null)}>
+        <form onSubmit={saveQuota}>
+          <Field label="Quota (MB)" hint="0 = unlimited. When exceeded, uploads and new mailboxes/databases are blocked.">
+            <Input type="number" min={0} value={quota} onChange={(e) => setQuota(Number(e.target.value))} />
+          </Field>
+          <div className="flex justify-end gap-2 mt-2">
+            <Btn type="button" variant="secondary" onClick={() => setQuotaFor(null)}>
+              Cancel
+            </Btn>
+            <Btn type="submit" disabled={busy}>
+              Save
             </Btn>
           </div>
         </form>

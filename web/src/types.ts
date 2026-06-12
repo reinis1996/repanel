@@ -7,7 +7,29 @@ export interface User {
   role: Role
   owner_id: number
   suspended: boolean
+  disk_quota_mb: number
   created_at: string
+}
+
+export interface Backup {
+  id: number
+  user_id: number
+  filename: string
+  size_bytes: number
+  status: 'running' | 'completed' | 'failed'
+  error: string
+  created_at: string
+  owner?: string
+}
+
+export interface Usage {
+  user_id: number
+  username: string
+  web_mb: number
+  mail_mb: number
+  db_mb: number
+  total_mb: number
+  disk_quota_mb: number
 }
 
 export interface Domain {

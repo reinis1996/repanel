@@ -12,7 +12,7 @@ import (
 var validUsername = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_.-]{2,31}$`)
 
 func (s *Server) handleUserList(w http.ResponseWriter, r *http.Request, u *models.User) {
-	query := `SELECT id, username, email, role, owner_id, suspended, created_at FROM users`
+	query := `SELECT id, username, email, role, owner_id, suspended, disk_quota_mb, created_at FROM users`
 	var args []any
 	if u.Role == models.RoleReseller {
 		query += ` WHERE owner_id = ? OR id = ?`
@@ -29,7 +29,7 @@ func (s *Server) handleUserList(w http.ResponseWriter, r *http.Request, u *model
 	for rows.Next() {
 		var usr models.User
 		var susp int
-		if rows.Scan(&usr.ID, &usr.Username, &usr.Email, &usr.Role, &usr.OwnerID, &susp, &usr.CreatedAt) == nil {
+		if rows.Scan(&usr.ID, &usr.Username, &usr.Email, &usr.Role, &usr.OwnerID, &susp, &usr.DiskQuotaMB, &usr.CreatedAt) == nil {
 			usr.Suspended = susp != 0
 			out = append(out, usr)
 		}
@@ -112,10 +112,11 @@ func (s *Server) handleUserUpdate(w http.ResponseWriter, r *http.Request, u *mod
 		return
 	}
 	req, err := decode[struct {
-		Email     *string `json:"email"`
-		Password  *string `json:"password"`
-		Suspended *bool   `json:"suspended"`
-		Role      *string `json:"role"`
+		Email       *string `json:"email"`
+		Password    *string `json:"password"`
+		Suspended   *bool   `json:"suspended"`
+		Role        *string `json:"role"`
+		DiskQuotaMB *int64  `json:"disk_quota_mb"`
 	}](r)
 	if err != nil {
 		s.err(w, http.StatusBadRequest, "invalid request body")
@@ -154,6 +155,16 @@ func (s *Server) handleUserUpdate(w http.ResponseWriter, r *http.Request, u *mod
 		}
 		if _, err := s.DB.Exec(`UPDATE users SET role = ? WHERE id = ?`, role, target.ID); err != nil {
 			s.fail(w, "update role", err)
+			return
+		}
+	}
+	if req.DiskQuotaMB != nil {
+		if *req.DiskQuotaMB < 0 {
+			s.err(w, http.StatusBadRequest, "quota must be 0 (unlimited) or positive")
+			return
+		}
+		if _, err := s.DB.Exec(`UPDATE users SET disk_quota_mb = ? WHERE id = ?`, *req.DiskQuotaMB, target.ID); err != nil {
+			s.fail(w, "update quota", err)
 			return
 		}
 	}

@@ -14,6 +14,8 @@
 - **FTP** — ProFTPD accounts jailed to a chosen directory
 - **SSL/TLS** — one-click Let's Encrypt (with automatic nightly renewal) or self-signed certificates
 - **Scheduled tasks** — cron jobs that run as the customer's system user
+- **Backups** — on-demand and nightly per-account archives (web files + mail + database dumps in plain tar.gz), with download, retention and one-click restore
+- **Usage & quotas** — live disk usage per account (web/mail/databases) with optional disk quotas enforced on uploads, mailboxes and databases
 - **Users & resellers** — admin / reseller / user roles; resellers manage their own customers
 - **Services & firewall** — systemd service control and ufw management from the UI
 - **Security** — bcrypt passwords, HttpOnly+SameSite session cookies, HTTPS out of the box, per-site open_basedir, path-jailed file operations
@@ -87,8 +89,9 @@ Design principles:
 
 ## Roadmap
 
-- [ ] Backups (scheduled, per-account, restore from UI)
-- [ ] Usage statistics & per-account resource quotas (disk/traffic)
+- [x] Backups (scheduled, per-account, restore from UI)
+- [x] Disk usage statistics & per-account disk quotas
+- [ ] Traffic accounting per account
 - [ ] Webmail (Roundcube one-click install)
 - [ ] One-click apps (WordPress installer)
 - [ ] DKIM/DMARC management & rspamd integration

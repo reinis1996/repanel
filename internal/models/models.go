@@ -20,7 +20,29 @@ type User struct {
 	Role         Role      `json:"role"`
 	OwnerID      int64     `json:"owner_id"` // reseller that owns this account, 0 = admin
 	Suspended    bool      `json:"suspended"`
+	DiskQuotaMB  int64     `json:"disk_quota_mb"` // 0 = unlimited
 	CreatedAt    time.Time `json:"created_at"`
+}
+
+type Backup struct {
+	ID        int64     `json:"id"`
+	UserID    int64     `json:"user_id"`
+	Filename  string    `json:"filename"`
+	SizeBytes int64     `json:"size_bytes"`
+	Status    string    `json:"status"` // running | completed | failed
+	Error     string    `json:"error"`
+	CreatedAt time.Time `json:"created_at"`
+	Owner     string    `json:"owner,omitempty"`
+}
+
+type Usage struct {
+	UserID      int64   `json:"user_id"`
+	Username    string  `json:"username"`
+	WebMB       float64 `json:"web_mb"`
+	MailMB      float64 `json:"mail_mb"`
+	DBMB        float64 `json:"db_mb"`
+	TotalMB     float64 `json:"total_mb"`
+	DiskQuotaMB int64   `json:"disk_quota_mb"` // 0 = unlimited
 }
 
 type Session struct {

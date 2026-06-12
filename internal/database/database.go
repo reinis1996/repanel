@@ -136,9 +136,23 @@ CREATE TABLE IF NOT EXISTS firewall_rules (
 	action TEXT NOT NULL DEFAULT 'allow',
 	note   TEXT NOT NULL DEFAULT ''
 );
+CREATE TABLE IF NOT EXISTS backups (
+	id         INTEGER PRIMARY KEY AUTOINCREMENT,
+	user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	filename   TEXT NOT NULL,
+	size_bytes INTEGER NOT NULL DEFAULT 0,
+	status     TEXT NOT NULL DEFAULT 'running',
+	error      TEXT NOT NULL DEFAULT '',
+	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 `
-	_, err := db.Exec(schema)
-	return err
+	if _, err := db.Exec(schema); err != nil {
+		return err
+	}
+	// Column additions for databases created by earlier versions; the error
+	// when the column already exists is expected and ignored.
+	db.Exec(`ALTER TABLE users ADD COLUMN disk_quota_mb INTEGER NOT NULL DEFAULT 0`)
+	return nil
 }
 
 // Setting reads a value from the settings table, "" when absent.

@@ -102,6 +102,10 @@ func (s *Server) domainScopedByName(u *models.User, name string) (*models.Domain
 }
 
 func (s *Server) handleMailboxCreate(w http.ResponseWriter, r *http.Request, u *models.User) {
+	if s.quotaExceeded(u) {
+		s.err(w, http.StatusForbidden, quotaMsg)
+		return
+	}
 	req, err := decode[struct {
 		Address  string `json:"address"` // user@domain
 		Password string `json:"password"`

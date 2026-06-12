@@ -88,7 +88,7 @@ func (m *Manager) PruneSessions() {
 func scanUser(row interface{ Scan(...any) error }) (*models.User, error) {
 	var u models.User
 	var suspended int
-	err := row.Scan(&u.ID, &u.Username, &u.Email, &u.PasswordHash, &u.Role, &u.OwnerID, &suspended, &u.CreatedAt)
+	err := row.Scan(&u.ID, &u.Username, &u.Email, &u.PasswordHash, &u.Role, &u.OwnerID, &suspended, &u.DiskQuotaMB, &u.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func scanUser(row interface{ Scan(...any) error }) (*models.User, error) {
 	return &u, nil
 }
 
-const userCols = `id, username, email, password_hash, role, owner_id, suspended, created_at`
+const userCols = `id, username, email, password_hash, role, owner_id, suspended, disk_quota_mb, created_at`
 
 func GetUserByUsername(db *database.DB, username string) (*models.User, error) {
 	u, err := scanUser(db.QueryRow(`SELECT `+userCols+` FROM users WHERE username = ?`, username))

@@ -33,6 +33,10 @@ func (s *Server) handleDBList(w http.ResponseWriter, r *http.Request, u *models.
 }
 
 func (s *Server) handleDBCreate(w http.ResponseWriter, r *http.Request, u *models.User) {
+	if s.quotaExceeded(u) {
+		s.err(w, http.StatusForbidden, quotaMsg)
+		return
+	}
 	req, err := decode[struct {
 		Name     string `json:"name"`
 		User     string `json:"user"`

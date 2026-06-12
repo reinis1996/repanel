@@ -112,7 +112,7 @@ func (s *Server) handleFirewallToggle(w http.ResponseWriter, r *http.Request, _ 
 
 // ---- settings ----
 
-var editableSettings = []string{"server_ip", "ns1", "ns2", "admin_email", "panel_hostname"}
+var editableSettings = []string{"server_ip", "ns1", "ns2", "admin_email", "panel_hostname", "backup_schedule", "backup_keep"}
 
 func (s *Server) handleSettingsGet(w http.ResponseWriter, r *http.Request, _ *models.User) {
 	out := map[string]string{}

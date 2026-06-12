@@ -100,6 +100,10 @@ func (s *Server) handleFileDownload(w http.ResponseWriter, r *http.Request, u *m
 }
 
 func (s *Server) handleFileUpload(w http.ResponseWriter, r *http.Request, u *models.User) {
+	if s.quotaExceeded(u) {
+		s.err(w, http.StatusForbidden, quotaMsg)
+		return
+	}
 	jail, sysUser, err := s.jailFor(u)
 	if err != nil {
 		s.fail(w, "resolve jail", err)

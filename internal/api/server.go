@@ -86,6 +86,13 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("POST /api/files/rename", s.user(s.handleFileRename))
 	mux.Handle("POST /api/files/delete", s.user(s.handleFileDelete))
 
+	mux.Handle("GET /api/backups", s.user(s.handleBackupList))
+	mux.Handle("POST /api/backups", s.user(s.handleBackupCreate))
+	mux.Handle("GET /api/backups/{id}/download", s.user(s.handleBackupDownload))
+	mux.Handle("POST /api/backups/{id}/restore", s.user(s.handleBackupRestore))
+	mux.Handle("DELETE /api/backups/{id}", s.user(s.handleBackupDelete))
+	mux.Handle("GET /api/usage", s.user(s.handleUsage))
+
 	mux.Handle("GET /api/cron", s.user(s.handleCronList))
 	mux.Handle("POST /api/cron", s.user(s.handleCronCreate))
 	mux.Handle("PUT /api/cron/{id}", s.user(s.handleCronUpdate))

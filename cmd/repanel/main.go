@@ -45,6 +45,7 @@ func main() {
 		var lastRenew time.Time
 		for range ticker.C {
 			srv.Auth.PruneSessions()
+			srv.MaybeRunScheduledBackups()
 			if time.Since(lastRenew) > 24*time.Hour {
 				lastRenew = time.Now()
 				if err := system.RenewCertificates(); err != nil {

@@ -19,7 +19,14 @@
       "Bash(git tag *)",
       "Bash(git push *)",
       "Bash(gh run *)",
-      "Bash(sh -n scripts/install.sh)"
+      "Bash(sh -n scripts/install.sh)",
+      "Bash(curl -sk -c /tmp/cj2 -X POST https://127.0.0.1:8099/api/login -d '{\"username\":\"admin\",\"password\":\"testpass123\"}')",
+      "Bash(curl -sk -b /tmp/cj2 https://127.0.0.1:8099/api/usage)",
+      "Bash(curl -sk -b /tmp/cj2 -X POST https://127.0.0.1:8099/api/backups -d '{}')",
+      "Bash(curl -sk -b /tmp/cj2 https://127.0.0.1:8099/api/backups)",
+      "Bash(curl -sk --max-time 15 -b /tmp/cj2 https://127.0.0.1:8099/api/usage)",
+      "Bash(curl -sk --max-time 15 -b /tmp/cj2 -X POST https://127.0.0.1:8099/api/backups -d '{}')",
+      "Bash(curl -sk --max-time 15 -b /tmp/cj2 https://127.0.0.1:8099/api/backups)"
     ]
   }
 }
