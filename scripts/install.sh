@@ -8,7 +8,7 @@
 # the panel on https://<server>:8443.
 set -eu
 
-REPO="repanel/repanel"
+REPO="reinis1996/repanel"
 PANEL_PORT=8443
 CONF_DIR=/etc/repanel
 DATA_DIR=/var/lib/repanel
