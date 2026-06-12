@@ -15,7 +15,10 @@
       "Bash(curl -sk -b /tmp/cj https://127.0.0.1:8099/api/dashboard)",
       "Bash(curl -sk -b /tmp/cj https://127.0.0.1:8099/api/domains)",
       "Bash(curl -sk https://127.0.0.1:8099/)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git tag *)",
+      "Bash(git push *)",
+      "Bash(gh run *)"
     ]
   }
 }

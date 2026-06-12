@@ -1,19 +1,92 @@
-# Builds release binaries for every architecture install.sh supports and
-# attaches them to the GitHub release, named repanel-linux-<arch> to match
+# Continuous releases.
+#
+# Every push (merge) to main computes the next semver tag from the commit
+# messages since the last tag — conventional-commit style:
+#   feat:            → minor bump
+#   anything else    → patch bump
+#   type!: / BREAKING CHANGE → major bump
+# …builds repanel-linux-<arch> for every architecture install.sh supports and
+# publishes a GitHub release, which also creates the tag. Asset names match
 # the installer's download URL:
 #   https://github.com/<repo>/releases/latest/download/repanel-linux-$ARCH
+#
+# Put "[skip release]" in the merge commit subject to push to main without
+# releasing. Manually pushed v* tags still release as before.
 name: Release
 
 on:
   push:
+    branches: ["main"]
     tags: ["v*"]
   workflow_dispatch:
 
 permissions:
-  contents: write # create the release and upload assets
+  contents: write # create tags, releases and upload assets
+
+# Serialize runs so two merges can't compute the same next tag.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.ver.outputs.tag }}
+      release: ${{ steps.ver.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so git describe finds the last tag
+
+      - name: Determine version
+        id: ver
+        run: |
+          set -eu
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git log -1 --format=%s | grep -qiF '[skip release]'; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping release: [skip release] in commit subject."
+            exit 0
+          fi
+
+          last="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || echo v0.0.0)"
+          if [ "$last" = "v0.0.0" ]; then range="HEAD"; else range="$last..HEAD"; fi
+
+          if [ -z "$(git log --format=%s $range)" ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping release: no new commits since $last."
+            exit 0
+          fi
+
+          bump=patch
+          git log --format='%s%n%b' $range | grep -qE '^[a-z]+(\([^)]*\))?!:|^BREAKING CHANGE' && bump=major
+          if [ "$bump" = "patch" ]; then
+            git log --format=%s $range | grep -qE '^feat(\([^)]*\))?:' && bump=minor
+          fi
+
+          v="${last#v}"
+          major="${v%%.*}"; rest="${v#*.}"
+          minor="${rest%%.*}"; patch="${rest#*.}"
+          case "$bump" in
+            major) major=$((major+1)); minor=0; patch=0 ;;
+            minor) minor=$((minor+1)); patch=0 ;;
+            patch) patch=$((patch+1)) ;;
+          esac
+          tag="v$major.$minor.$patch"
+
+          echo "Last tag: $last → next: $tag ($bump bump)"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: version
+    if: needs.version.outputs.release == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -44,10 +117,9 @@ jobs:
           GOOS: linux
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: "0"
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          [ "$GITHUB_REF_TYPE" = "tag" ] || VERSION="0.0.0-dev.$(git rev-parse --short HEAD)"
-          go build -trimpath -ldflags "-s -w -X main.version=$VERSION" \
+          go build -trimpath -ldflags "-s -w -X main.version=${TAG#v}" \
             -o "repanel-linux-${{ matrix.goarch }}" ./cmd/repanel
 
       - name: Checksum
@@ -62,17 +134,20 @@ jobs:
           if-no-files-found: error
 
   release:
-    # Attach the binaries to the release only for real tag pushes.
-    if: github.ref_type == 'tag'
-    needs: build
+    needs: [version, build]
+    if: needs.version.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
 
+      # Creating the release also creates the tag when it doesn't exist yet
+      # (the auto-tag path for pushes to main).
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: |
             repanel-linux-*
           generate_release_notes: true
