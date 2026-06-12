@@ -1,0 +1,78 @@
+# Builds release binaries for every architecture install.sh supports and
+# attaches them to the GitHub release, named repanel-linux-<arch> to match
+# the installer's download URL:
+#   https://github.com/<repo>/releases/latest/download/repanel-linux-$ARCH
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write # create the release and upload assets
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goarch: amd64
+          - goarch: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build web UI
+        run: |
+          cd web
+          npm ci
+          npm run build
+
+      - name: Build binary
+        env:
+          GOOS: linux
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          [ "$GITHUB_REF_TYPE" = "tag" ] || VERSION="0.0.0-dev.$(git rev-parse --short HEAD)"
+          go build -trimpath -ldflags "-s -w -X main.version=$VERSION" \
+            -o "repanel-linux-${{ matrix.goarch }}" ./cmd/repanel
+
+      - name: Checksum
+        run: sha256sum "repanel-linux-${{ matrix.goarch }}" > "repanel-linux-${{ matrix.goarch }}.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repanel-linux-${{ matrix.goarch }}
+          path: |
+            repanel-linux-${{ matrix.goarch }}
+            repanel-linux-${{ matrix.goarch }}.sha256
+          if-no-files-found: error
+
+  release:
+    # Attach the binaries to the release only for real tag pushes.
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            repanel-linux-*
+          generate_release_notes: true
