@@ -1,0 +1,12 @@
+# build artifacts
+/repanel
+/repanel.exe
+/dist/
+web/dist/
+web/node_modules/
+
+# local development
+/dev.conf
+/.devdata/
+*.log
+.claude

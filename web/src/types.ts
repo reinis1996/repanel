@@ -1,0 +1,133 @@
+export type Role = 'admin' | 'reseller' | 'user'
+
+export interface User {
+  id: number
+  username: string
+  email: string
+  role: Role
+  owner_id: number
+  suspended: boolean
+  created_at: string
+}
+
+export interface Domain {
+  id: number
+  user_id: number
+  name: string
+  document_root: string
+  php_version: string
+  ssl: boolean
+  suspended: boolean
+  created_at: string
+  owner?: string
+}
+
+export interface DNSZone {
+  id: number
+  domain_id: number
+  name: string
+  serial: number
+  records?: DNSRecord[]
+  created_at: string
+}
+
+export interface DNSRecord {
+  id: number
+  zone_id: number
+  name: string
+  type: string
+  value: string
+  ttl: number
+  priority: number
+}
+
+export interface Mailbox {
+  id: number
+  domain_id: number
+  address: string
+  quota_mb: number
+  created_at: string
+}
+
+export interface MailAlias {
+  id: number
+  domain_id: number
+  source: string
+  destination: string
+}
+
+export interface DatabaseEntry {
+  id: number
+  user_id: number
+  name: string
+  db_user: string
+  created_at: string
+  size_mb: number
+}
+
+export interface FTPAccount {
+  id: number
+  user_id: number
+  username: string
+  directory: string
+  created_at: string
+}
+
+export interface CronJob {
+  id: number
+  user_id: number
+  schedule: string
+  command: string
+  comment: string
+  enabled: boolean
+}
+
+export interface Certificate {
+  id: number
+  domain_id: number
+  domain: string
+  issuer: string
+  not_after: string
+  created_at: string
+}
+
+export interface ServiceStatus {
+  name: string
+  display_name: string
+  description: string
+  installed: boolean
+  active: boolean
+  enabled: boolean
+}
+
+export interface FirewallRule {
+  id: number
+  port: string
+  proto: string
+  source: string
+  action: string
+  note: string
+}
+
+export interface SystemInfo {
+  hostname: string
+  os: string
+  kernel: string
+  uptime_seconds: number
+  load_avg: string
+  cpu_count: number
+  cpu_usage_percent: number
+  mem_total_mb: number
+  mem_used_mb: number
+  disk_total_gb: number
+  disk_used_gb: number
+  panel_version: string
+}
+
+export interface FileEntry {
+  name: string
+  is_dir: boolean
+  size: number
+  mode: string
+  mod_time: string
+}

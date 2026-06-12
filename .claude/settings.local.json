@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go get *)",
+      "Bash(go build *)",
+      "Bash(go vet *)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(printf 'LISTEN=127.0.0.1:8099\\\\nDATA_DIR=./.devdata\\\\n')",
+      "Read(//d/d/Darbs/repanel/**)",
+      "Bash(./repanel.exe -config dev.conf)",
+      "Bash(curl -sk https://127.0.0.1:8099/api/setup)",
+      "Bash(curl -sk -X POST https://127.0.0.1:8099/api/setup -d '{\"username\":\"admin\",\"email\":\"a@b.lv\",\"password\":\"testpass123\",\"server_ip\":\"203.0.113.5\"}')",
+      "Bash(curl -sk -c /tmp/cj -X POST https://127.0.0.1:8099/api/login -d '{\"username\":\"admin\",\"password\":\"testpass123\"}')",
+      "Bash(curl -sk -b /tmp/cj https://127.0.0.1:8099/api/dashboard)",
+      "Bash(curl -sk -b /tmp/cj https://127.0.0.1:8099/api/domains)",
+      "Bash(curl -sk https://127.0.0.1:8099/)",
+      "Bash(git add *)"
+    ]
+  }
+}
