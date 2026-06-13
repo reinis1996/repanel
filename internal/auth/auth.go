@@ -3,9 +3,12 @@ package auth
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -15,6 +18,10 @@ import (
 )
 
 const CookieName = "repanel_session"
+
+// TokenPrefix labels personal API tokens so they're recognisable in logs and
+// the UI (and lets the auth path reject obvious non-tokens cheaply).
+const TokenPrefix = "rpat_"
 
 var ErrInvalidCredentials = errors.New("invalid username or password")
 
@@ -60,15 +67,23 @@ func (m *Manager) Logout(token string) {
 	m.DB.Exec(`DELETE FROM sessions WHERE token = ?`, token)
 }
 
-// UserForRequest resolves the session cookie to a user, nil when anonymous.
+// UserForRequest resolves a request to a user, nil when anonymous. It accepts
+// either a session cookie (browser) or an `Authorization: Bearer <token>`
+// personal API token (automation / CLI).
 func (m *Manager) UserForRequest(r *http.Request) *models.User {
-	c, err := r.Cookie(CookieName)
-	if err != nil || c.Value == "" {
-		return nil
+	if c, err := r.Cookie(CookieName); err == nil && c.Value != "" {
+		return m.userForSession(c.Value)
 	}
+	if h := r.Header.Get("Authorization"); strings.HasPrefix(h, "Bearer ") {
+		return m.userForToken(strings.TrimSpace(h[len("Bearer "):]))
+	}
+	return nil
+}
+
+func (m *Manager) userForSession(token string) *models.User {
 	var userID int64
 	var expires time.Time
-	err = m.DB.QueryRow(`SELECT user_id, expires_at FROM sessions WHERE token = ?`, c.Value).
+	err := m.DB.QueryRow(`SELECT user_id, expires_at FROM sessions WHERE token = ?`, token).
 		Scan(&userID, &expires)
 	if err != nil || time.Now().After(expires) {
 		return nil
@@ -78,6 +93,48 @@ func (m *Manager) UserForRequest(r *http.Request) *models.User {
 		return nil
 	}
 	return u
+}
+
+// userForToken validates a personal API token and records its use. The stored
+// value is a SHA-256 hash of the token, so the database never holds the secret.
+func (m *Manager) userForToken(token string) *models.User {
+	if !strings.HasPrefix(token, TokenPrefix) {
+		return nil
+	}
+	hash := HashToken(token)
+	var userID int64
+	var expires sql.NullTime
+	err := m.DB.QueryRow(`SELECT user_id, expires_at FROM api_tokens WHERE token_hash = ?`, hash).
+		Scan(&userID, &expires)
+	if err != nil {
+		return nil
+	}
+	if expires.Valid && time.Now().After(expires.Time) {
+		return nil
+	}
+	u, err := GetUserByID(m.DB, userID)
+	if err != nil || u == nil || u.Suspended {
+		return nil
+	}
+	m.DB.Exec(`UPDATE api_tokens SET last_used_at = ? WHERE token_hash = ?`, time.Now(), hash)
+	return u
+}
+
+// NewAPIToken mints a personal API token: the secret to show the user once, the
+// SHA-256 hash to persist, and a short non-secret prefix for display.
+func NewAPIToken() (token, hash, prefix string, err error) {
+	buf := make([]byte, 24)
+	if _, err = rand.Read(buf); err != nil {
+		return "", "", "", err
+	}
+	token = TokenPrefix + hex.EncodeToString(buf)
+	return token, HashToken(token), token[:len(TokenPrefix)+8], nil
+}
+
+// HashToken returns the storage hash for an API token.
+func HashToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
 }
 
 // PruneSessions removes expired sessions; called periodically.

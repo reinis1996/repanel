@@ -155,6 +155,16 @@ CREATE TABLE IF NOT EXISTS traffic_state (
 	domain_id INTEGER PRIMARY KEY REFERENCES domains(id) ON DELETE CASCADE,
 	log_size  INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS api_tokens (
+	id           INTEGER PRIMARY KEY AUTOINCREMENT,
+	user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	name         TEXT NOT NULL,
+	token_hash   TEXT NOT NULL UNIQUE,
+	prefix       TEXT NOT NULL,
+	last_used_at TIMESTAMP,
+	expires_at   TIMESTAMP,
+	created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 `
 	if _, err := db.Exec(schema); err != nil {
 		return err

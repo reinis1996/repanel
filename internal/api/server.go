@@ -94,6 +94,10 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("GET /api/usage", s.user(s.handleUsage))
 	mux.Handle("GET /api/traffic", s.user(s.handleTraffic))
 
+	mux.Handle("GET /api/tokens", s.user(s.handleTokenList))
+	mux.Handle("POST /api/tokens", s.user(s.handleTokenCreate))
+	mux.Handle("DELETE /api/tokens/{id}", s.user(s.handleTokenDelete))
+
 	mux.Handle("GET /api/cron", s.user(s.handleCronList))
 	mux.Handle("POST /api/cron", s.user(s.handleCronCreate))
 	mux.Handle("PUT /api/cron/{id}", s.user(s.handleCronUpdate))

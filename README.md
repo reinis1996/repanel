@@ -19,6 +19,7 @@
 - **Traffic accounting** — per-account and per-domain bandwidth, tallied incrementally from the nginx access logs with a daily history chart
 - **Users & resellers** — admin / reseller / user roles; resellers manage their own customers
 - **Services & firewall** — systemd service control and ufw management from the UI
+- **API tokens** — personal access tokens for the REST API (`Authorization: Bearer …`) with optional expiry, scoped to the issuing account's role
 - **Security** — bcrypt passwords, HttpOnly+SameSite session cookies, HTTPS out of the box, per-site open_basedir, path-jailed file operations
 
 ## Installation
@@ -99,7 +100,8 @@ Design principles:
 - [ ] Apache as an alternative web server
 - [ ] PostgreSQL support
 - [ ] Multi-server / slave DNS
-- [ ] API tokens & CLI client
+- [x] API tokens (personal access tokens for the REST API)
+- [ ] CLI client
 - [ ] Localization
 
 ## Contributing

@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate } from 're
 import {
   LayoutDashboard, Globe, Network, Mail, Database, FolderOpen, Server,
   ShieldCheck, Clock, Users as UsersIcon, Activity, Shield, Settings as SettingsIcon,
-  LogOut, KeyRound, ChevronDown, Loader2, Archive, BarChart3,
+  LogOut, KeyRound, ChevronDown, Loader2, Archive, BarChart3, Key,
 } from 'lucide-react'
 import { api } from './api'
 import type { User } from './types'
@@ -21,6 +21,7 @@ import Ssl from './pages/Ssl'
 import Cron from './pages/Cron'
 import Backups from './pages/Backups'
 import Traffic from './pages/Traffic'
+import ApiTokens from './pages/ApiTokens'
 import UsersPage from './pages/Users'
 import Services from './pages/Services'
 import Firewall from './pages/Firewall'
@@ -95,6 +96,7 @@ const nav = [
   { to: '/cron', label: 'Scheduled Tasks', icon: Clock },
   { to: '/backups', label: 'Backups', icon: Archive },
   { to: '/traffic', label: 'Traffic', icon: BarChart3 },
+  { to: '/tokens', label: 'API Tokens', icon: Key },
 ]
 
 const adminNav = [
@@ -154,6 +156,7 @@ function Shell() {
             <Route path="/cron" element={<Cron />} />
             <Route path="/backups" element={<Backups />} />
             <Route path="/traffic" element={<Traffic />} />
+            <Route path="/tokens" element={<ApiTokens />} />
             {(isAdmin || isReseller) && <Route path="/users" element={<UsersPage />} />}
             {isAdmin && (
               <>

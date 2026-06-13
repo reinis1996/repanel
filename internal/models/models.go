@@ -66,6 +66,20 @@ type TrafficDay struct {
 	MB  float64 `json:"mb"`
 }
 
+// APIToken is a personal access token for the REST API. Token (the secret) is
+// only populated in the response to creation; it is never stored or returned
+// afterwards.
+type APIToken struct {
+	ID         int64      `json:"id"`
+	UserID     int64      `json:"user_id"`
+	Name       string     `json:"name"`
+	Prefix     string     `json:"prefix"`
+	LastUsedAt *time.Time `json:"last_used_at"`
+	ExpiresAt  *time.Time `json:"expires_at"`
+	CreatedAt  time.Time  `json:"created_at"`
+	Token      string     `json:"token,omitempty"`
+}
+
 type Session struct {
 	Token     string
 	UserID    int64

@@ -32,6 +32,17 @@ export interface Usage {
   disk_quota_mb: number
 }
 
+export interface APIToken {
+  id: number
+  user_id: number
+  name: string
+  prefix: string
+  last_used_at: string | null
+  expires_at: string | null
+  created_at: string
+  token?: string // only returned once, at creation
+}
+
 export interface TrafficStat {
   user_id: number
   username: string
