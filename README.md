@@ -16,6 +16,7 @@
 - **Scheduled tasks** — cron jobs that run as the customer's system user
 - **Backups** — on-demand and nightly per-account archives (web files + mail + database dumps in plain tar.gz), with download, retention and one-click restore
 - **Usage & quotas** — live disk usage per account (web/mail/databases) with optional disk quotas enforced on uploads, mailboxes and databases
+- **Traffic accounting** — per-account and per-domain bandwidth, tallied incrementally from the nginx access logs with a daily history chart
 - **Users & resellers** — admin / reseller / user roles; resellers manage their own customers
 - **Services & firewall** — systemd service control and ufw management from the UI
 - **Security** — bcrypt passwords, HttpOnly+SameSite session cookies, HTTPS out of the box, per-site open_basedir, path-jailed file operations
@@ -91,7 +92,7 @@ Design principles:
 
 - [x] Backups (scheduled, per-account, restore from UI)
 - [x] Disk usage statistics & per-account disk quotas
-- [ ] Traffic accounting per account
+- [x] Traffic accounting per account
 - [ ] Webmail (Roundcube one-click install)
 - [ ] One-click apps (WordPress installer)
 - [ ] DKIM/DMARC management & rspamd integration

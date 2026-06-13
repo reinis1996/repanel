@@ -26,7 +26,14 @@
       "Bash(curl -sk -b /tmp/cj2 https://127.0.0.1:8099/api/backups)",
       "Bash(curl -sk --max-time 15 -b /tmp/cj2 https://127.0.0.1:8099/api/usage)",
       "Bash(curl -sk --max-time 15 -b /tmp/cj2 -X POST https://127.0.0.1:8099/api/backups -d '{}')",
-      "Bash(curl -sk --max-time 15 -b /tmp/cj2 https://127.0.0.1:8099/api/backups)"
+      "Bash(curl -sk --max-time 15 -b /tmp/cj2 https://127.0.0.1:8099/api/backups)",
+      "Bash(echo \"EXIT $?\")",
+      "Bash(go test *)",
+      "Bash(./repanel-smoke.exe -config smoke.conf)",
+      "Bash(echo \"started pid $!\")",
+      "Bash(curl -sk http://127.0.0.1:8097/api/setup)",
+      "Bash(curl -sk http://127.0.0.1:8097/api/traffic)",
+      "Bash(kill %1)"
     ]
   }
 }

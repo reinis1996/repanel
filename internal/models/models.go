@@ -45,6 +45,27 @@ type Usage struct {
 	DiskQuotaMB int64   `json:"disk_quota_mb"` // 0 = unlimited
 }
 
+// TrafficStat is the bandwidth served for one account over a reporting window.
+type TrafficStat struct {
+	UserID   int64           `json:"user_id"`
+	Username string          `json:"username"`
+	TotalMB  float64         `json:"total_mb"`
+	Domains  []TrafficDomain `json:"domains"`
+	Series   []TrafficDay    `json:"series"`
+}
+
+// TrafficDomain is one domain's share of an account's bandwidth in the window.
+type TrafficDomain struct {
+	Domain string  `json:"domain"`
+	MB     float64 `json:"mb"`
+}
+
+// TrafficDay is an account's total bandwidth on one calendar day.
+type TrafficDay struct {
+	Day string  `json:"day"` // YYYY-MM-DD
+	MB  float64 `json:"mb"`
+}
+
 type Session struct {
 	Token     string
 	UserID    int64

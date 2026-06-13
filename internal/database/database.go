@@ -145,6 +145,16 @@ CREATE TABLE IF NOT EXISTS backups (
 	error      TEXT NOT NULL DEFAULT '',
 	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS traffic (
+	domain_id INTEGER NOT NULL REFERENCES domains(id) ON DELETE CASCADE,
+	day       TEXT NOT NULL,
+	bytes     INTEGER NOT NULL DEFAULT 0,
+	PRIMARY KEY (domain_id, day)
+);
+CREATE TABLE IF NOT EXISTS traffic_state (
+	domain_id INTEGER PRIMARY KEY REFERENCES domains(id) ON DELETE CASCADE,
+	log_size  INTEGER NOT NULL DEFAULT 0
+);
 `
 	if _, err := db.Exec(schema); err != nil {
 		return err

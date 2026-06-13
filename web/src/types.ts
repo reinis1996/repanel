@@ -32,6 +32,14 @@ export interface Usage {
   disk_quota_mb: number
 }
 
+export interface TrafficStat {
+  user_id: number
+  username: string
+  total_mb: number
+  domains: { domain: string; mb: number }[]
+  series: { day: string; mb: number }[]
+}
+
 export interface Domain {
   id: number
   user_id: number

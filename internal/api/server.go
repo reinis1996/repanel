@@ -92,6 +92,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("POST /api/backups/{id}/restore", s.user(s.handleBackupRestore))
 	mux.Handle("DELETE /api/backups/{id}", s.user(s.handleBackupDelete))
 	mux.Handle("GET /api/usage", s.user(s.handleUsage))
+	mux.Handle("GET /api/traffic", s.user(s.handleTraffic))
 
 	mux.Handle("GET /api/cron", s.user(s.handleCronList))
 	mux.Handle("POST /api/cron", s.user(s.handleCronCreate))
