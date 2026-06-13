@@ -55,9 +55,7 @@ func WriteZone(bindDir string, zone models.DNSZone, primaryNS, adminMail string)
 		case "MX", "SRV":
 			value = fmt.Sprintf("%d %s", r.Priority, r.Value)
 		case "TXT":
-			if !strings.HasPrefix(value, `"`) {
-				value = `"` + strings.ReplaceAll(value, `"`, `\"`) + `"`
-			}
+			value = formatTXT(value)
 		}
 		fmt.Fprintf(&sb, "%s %d IN %s %s\n", name, ttl, strings.ToUpper(r.Type), value)
 	}
@@ -74,6 +72,29 @@ func WriteZone(bindDir string, zone models.DNSZone, primaryNS, adminMail string)
 		return err
 	}
 	return reloadBind()
+}
+
+// formatTXT renders a TXT record value for a BIND zone file. A value already
+// wrapped in quotes is passed through; otherwise it is escaped and, when longer
+// than the 255-byte per-string limit, split into multiple quoted chunks (as
+// DKIM public keys require).
+func formatTXT(v string) string {
+	if strings.HasPrefix(v, `"`) {
+		return v
+	}
+	v = strings.ReplaceAll(v, `"`, `\"`)
+	if len(v) <= 255 {
+		return `"` + v + `"`
+	}
+	var chunks []string
+	for len(v) > 255 {
+		chunks = append(chunks, `"`+v[:255]+`"`)
+		v = v[255:]
+	}
+	if len(v) > 0 {
+		chunks = append(chunks, `"`+v+`"`)
+	}
+	return "( " + strings.Join(chunks, " ") + " )"
 }
 
 // RemoveZone deletes a zone file and refreshes the include config.

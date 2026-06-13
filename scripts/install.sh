@@ -34,6 +34,7 @@ apt-get install -y -qq \
   nginx php-fpm php-mysql php-curl php-gd php-mbstring php-xml php-zip \
   mariadb-server bind9 bind9utils \
   postfix postfix-pcre dovecot-imapd dovecot-pop3d dovecot-lmtpd \
+  opendkim opendkim-tools \
   proftpd-basic certbot ufw fail2ban curl ca-certificates >/dev/null
 
 PHP_VER="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null || echo 8.2)"
@@ -217,6 +218,41 @@ esac
 chgrp dovecot "$CONF_DIR/mail/passwd" 2>/dev/null || true
 # Don't abort the whole installation if mail needs manual attention.
 systemctl restart dovecot || say "WARNING: dovecot failed to start — check 'journalctl -u dovecot' after installation"
+systemctl restart postfix
+
+# ---- OpenDKIM (DKIM signing, driven by the panel) --------------------------
+say "Configuring OpenDKIM"
+mkdir -p /etc/opendkim/keys
+: > /etc/opendkim/key.table
+: > /etc/opendkim/signing.table
+cat > /etc/opendkim/trusted.hosts <<'EOF'
+127.0.0.1
+::1
+localhost
+EOF
+cat > /etc/opendkim.conf <<'EOF'
+# Managed by RePanel
+Syslog               yes
+UMask                002
+Mode                 sv
+Canonicalization     relaxed/simple
+KeyTable             /etc/opendkim/key.table
+SigningTable         refile:/etc/opendkim/signing.table
+ExternalIgnoreList   /etc/opendkim/trusted.hosts
+InternalHosts        /etc/opendkim/trusted.hosts
+Socket               inet:8891@localhost
+PidFile              /run/opendkim/opendkim.pid
+OversignHeaders      From
+UserID               opendkim
+EOF
+chown -R opendkim:opendkim /etc/opendkim
+# Wire OpenDKIM into Postfix as a milter (the panel writes the tables/keys).
+postconf -e \
+  "milter_default_action = accept" \
+  "milter_protocol = 6" \
+  "smtpd_milters = inet:localhost:8891" \
+  "non_smtpd_milters = inet:localhost:8891"
+systemctl enable --now opendkim >/dev/null 2>&1 || say "WARNING: opendkim failed to start — check 'journalctl -u opendkim'"
 systemctl restart postfix
 
 # ---- ProFTPD ---------------------------------------------------------------

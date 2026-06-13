@@ -17,6 +17,7 @@ var ManagedServices = []models.ServiceStatus{
 	{Name: "bind9", DisplayName: "DNS Server (BIND)", Description: "Authoritative DNS"},
 	{Name: "postfix", DisplayName: "Mail (Postfix)", Description: "SMTP server"},
 	{Name: "dovecot", DisplayName: "Mail (Dovecot)", Description: "IMAP/POP3 server"},
+	{Name: "opendkim", DisplayName: "Mail (OpenDKIM)", Description: "DKIM message signing"},
 	{Name: "proftpd", DisplayName: "FTP (ProFTPD)", Description: "FTP server"},
 	{Name: "ssh", DisplayName: "SSH", Description: "Secure shell access"},
 	{Name: "cron", DisplayName: "Cron", Description: "Scheduled tasks"},

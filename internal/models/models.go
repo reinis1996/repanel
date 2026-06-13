@@ -142,6 +142,23 @@ type Mailbox struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
+// DKIMStatus reports a domain's email-authentication state: whether DKIM
+// signing is enabled and the DNS records that should be published. When the
+// domain's zone is hosted by this panel the records are published
+// automatically; otherwise the operator copies them to their DNS provider.
+type DKIMStatus struct {
+	DomainID   int64  `json:"domain_id"`
+	Domain     string `json:"domain"`
+	Enabled    bool   `json:"enabled"`
+	Selector   string `json:"selector"`
+	DNSManaged bool   `json:"dns_managed"`
+	DKIMName   string `json:"dkim_name"`  // e.g. repanel._domainkey
+	DKIMValue  string `json:"dkim_value"` // v=DKIM1; ...
+	DMARCName  string `json:"dmarc_name"` // _dmarc
+	DMARCValue string `json:"dmarc_value"`
+	SPFSuggest string `json:"spf_suggest"`
+}
+
 type MailAlias struct {
 	ID          int64  `json:"id"`
 	DomainID    int64  `json:"domain_id"`
@@ -188,7 +205,7 @@ type Certificate struct {
 }
 
 type ServiceStatus struct {
-	Name        string `json:"name"`        // systemd unit name
+	Name        string `json:"name"` // systemd unit name
 	DisplayName string `json:"display_name"`
 	Description string `json:"description"`
 	Installed   bool   `json:"installed"`
@@ -198,10 +215,10 @@ type ServiceStatus struct {
 
 type FirewallRule struct {
 	ID     int64  `json:"id"`
-	Port   string `json:"port"`     // "80", "8080:8090"
-	Proto  string `json:"proto"`    // tcp | udp
-	Source string `json:"source"`   // CIDR or "any"
-	Action string `json:"action"`   // allow | deny
+	Port   string `json:"port"`   // "80", "8080:8090"
+	Proto  string `json:"proto"`  // tcp | udp
+	Source string `json:"source"` // CIDR or "any"
+	Action string `json:"action"` // allow | deny
 	Note   string `json:"note"`
 }
 

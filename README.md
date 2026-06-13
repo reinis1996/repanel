@@ -8,7 +8,7 @@
 
 - **Websites & Domains** — per-domain nginx vhosts with isolated PHP-FPM pools (each site runs as its own system user), selectable PHP version, suspend/unsuspend
 - **DNS** — authoritative zones served by BIND with a full record editor (A, AAAA, CNAME, MX, TXT, NS, SRV, CAA) and sane default zone templates
-- **Mail** — virtual mailboxes and aliases on Postfix + Dovecot (IMAP/POP3/SMTP auth), per-mailbox quotas
+- **Mail** — virtual mailboxes and aliases on Postfix + Dovecot (IMAP/POP3/SMTP auth), per-mailbox quotas, one-click DKIM signing (OpenDKIM) with DMARC/SPF records published automatically into managed zones
 - **Databases** — MariaDB and (optional) PostgreSQL databases with a dedicated user per database, live size reporting
 - **File Manager** — browse, upload, download, edit, rename and delete inside a jailed web space
 - **FTP** — ProFTPD accounts jailed to a chosen directory
@@ -104,7 +104,7 @@ Design principles:
 - [x] Traffic accounting per account
 - [ ] Webmail (Roundcube one-click install)
 - [x] One-click apps (WordPress installer)
-- [ ] DKIM/DMARC management & rspamd integration
+- [x] DKIM/DMARC management (OpenDKIM signing + DNS records)
 - [ ] Apache as an alternative web server
 - [x] PostgreSQL support (alongside MariaDB)
 - [ ] Multi-server / slave DNS

@@ -95,6 +95,19 @@ export interface DNSRecord {
   priority: number
 }
 
+export interface DKIMStatus {
+  domain_id: number
+  domain: string
+  enabled: boolean
+  selector: string
+  dns_managed: boolean
+  dkim_name: string
+  dkim_value: string
+  dmarc_name: string
+  dmarc_value: string
+  spf_suggest: string
+}
+
 export interface Mailbox {
   id: number
   domain_id: number
