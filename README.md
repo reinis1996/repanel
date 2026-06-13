@@ -101,8 +101,31 @@ Design principles:
 - [ ] PostgreSQL support
 - [ ] Multi-server / slave DNS
 - [x] API tokens (personal access tokens for the REST API)
-- [ ] CLI client
+- [x] CLI client (`repctl`)
 - [ ] Localization
+
+## Command-line client
+
+`repctl` is a small companion binary that drives the same REST API from a
+terminal or scripts, authenticating with a personal API token (create one under
+**API Tokens** in the panel).
+
+```sh
+# point it at your panel once (token from the API Tokens page)
+repctl --url https://panel.example.com:8443 --token rpat_… login
+
+# then:
+repctl whoami
+repctl domains list
+repctl domains create example.com --php 8.3 --dns
+repctl backups list
+repctl api GET /api/dashboard          # raw access to any endpoint
+```
+
+Configuration is taken from flags, then the `REPANEL_URL` / `REPANEL_TOKEN`
+environment variables, then the saved config file. Pass `--insecure` for panels
+using the default self-signed certificate, and `--json` for machine-readable
+output.
 
 ## Contributing
 

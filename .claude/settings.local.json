@@ -35,7 +35,9 @@
       "Bash(curl -sk http://127.0.0.1:8097/api/traffic)",
       "Bash(kill %1)",
       "Bash(sed -n '/func \\(s \\\\*Server\\) handleSetup\\(/,/^}/p' internal/api/auth_handlers.go)",
-      "Bash(sed -n '/func \\(s \\\\*Server\\) handleLogin\\(/,/^}/p' internal/api/auth_handlers.go)"
+      "Bash(sed -n '/func \\(s \\\\*Server\\) handleLogin\\(/,/^}/p' internal/api/auth_handlers.go)",
+      "Bash(echo \"BUILD EXIT $?\")",
+      "Bash(gofmt -w cmd/repctl/*.go)"
     ]
   }
 }
