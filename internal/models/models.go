@@ -139,6 +139,7 @@ type DatabaseEntry struct {
 	UserID    int64     `json:"user_id"`
 	Name      string    `json:"name"`
 	DBUser    string    `json:"db_user"`
+	Engine    string    `json:"engine"` // mysql | postgres
 	CreatedAt time.Time `json:"created_at"`
 	SizeMB    float64   `json:"size_mb"`
 }

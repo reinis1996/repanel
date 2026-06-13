@@ -9,7 +9,7 @@
 - **Websites & Domains** — per-domain nginx vhosts with isolated PHP-FPM pools (each site runs as its own system user), selectable PHP version, suspend/unsuspend
 - **DNS** — authoritative zones served by BIND with a full record editor (A, AAAA, CNAME, MX, TXT, NS, SRV, CAA) and sane default zone templates
 - **Mail** — virtual mailboxes and aliases on Postfix + Dovecot (IMAP/POP3/SMTP auth), per-mailbox quotas
-- **Databases** — MariaDB databases with a dedicated user per database, live size reporting
+- **Databases** — MariaDB and (optional) PostgreSQL databases with a dedicated user per database, live size reporting
 - **File Manager** — browse, upload, download, edit, rename and delete inside a jailed web space
 - **FTP** — ProFTPD accounts jailed to a chosen directory
 - **SSL/TLS** — one-click Let's Encrypt (with automatic nightly renewal) or self-signed certificates
@@ -30,9 +30,16 @@ On a **fresh** Debian 12+ / Ubuntu 22.04+ server, as root:
 curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/main/scripts/install.sh | sh
 ```
 
-Then open `https://<server-ip>:8443` and create the administrator account. The installer sets up nginx, PHP-FPM, MariaDB, BIND, Postfix, Dovecot, ProFTPD, certbot, ufw and fail2ban, and wires them all to the panel.
+Then open `https://<server-ip>:8443` and create the administrator account. The installer sets up nginx, PHP-FPM, MariaDB, BIND, Postfix, Dovecot, ProFTPD, certbot, ufw and fail2ban, and wires them all to the panel. It also installs the `repctl` command-line client.
 
 > The panel serves its UI over HTTPS with a self-signed certificate by default; point `TLS_CERT` / `TLS_KEY` in `/etc/repanel/repanel.conf` at a real certificate to remove the browser warning.
+
+To install PostgreSQL alongside MariaDB, run the installer with `WITH_POSTGRES=1`
+(or `apt install postgresql` later — the panel detects it automatically):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/main/scripts/install.sh | WITH_POSTGRES=1 sh
+```
 
 ## Building from source
 
@@ -98,7 +105,7 @@ Design principles:
 - [ ] One-click apps (WordPress installer)
 - [ ] DKIM/DMARC management & rspamd integration
 - [ ] Apache as an alternative web server
-- [ ] PostgreSQL support
+- [x] PostgreSQL support (alongside MariaDB)
 - [ ] Multi-server / slave DNS
 - [x] API tokens (personal access tokens for the REST API)
 - [x] CLI client (`repctl`)

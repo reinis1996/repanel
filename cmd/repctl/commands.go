@@ -135,9 +135,9 @@ func cmdDatabases(cl *Client, asJSON bool, args []string) error {
 		if asJSON {
 			return printJSON(dbs)
 		}
-		w := newTable("ID", "NAME", "USER", "SIZE")
+		w := newTable("ID", "NAME", "ENGINE", "USER", "SIZE")
 		for _, d := range dbs {
-			fmt.Fprintf(w, "%d\t%s\t%s\t%.1f MB\n", d.ID, d.Name, d.DBUser, d.SizeMB)
+			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%.1f MB\n", d.ID, d.Name, dbEngineLabel(d.Engine), d.DBUser, d.SizeMB)
 		}
 		return w.Flush()
 	default:
@@ -274,6 +274,13 @@ func printJSON(v any) error {
 	}
 	fmt.Println(string(b))
 	return nil
+}
+
+func dbEngineLabel(e string) string {
+	if e == "postgres" {
+		return "PostgreSQL"
+	}
+	return "MariaDB"
 }
 
 func yesNo(b bool) string {

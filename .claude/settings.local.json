@@ -37,7 +37,8 @@
       "Bash(sed -n '/func \\(s \\\\*Server\\) handleSetup\\(/,/^}/p' internal/api/auth_handlers.go)",
       "Bash(sed -n '/func \\(s \\\\*Server\\) handleLogin\\(/,/^}/p' internal/api/auth_handlers.go)",
       "Bash(echo \"BUILD EXIT $?\")",
-      "Bash(gofmt -w cmd/repctl/*.go)"
+      "Bash(gofmt -w cmd/repctl/*.go)",
+      "Bash(gofmt -w internal/system/postgres_test.go internal/api/databases_test.go)"
     ]
   }
 }

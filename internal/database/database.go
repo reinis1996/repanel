@@ -172,6 +172,7 @@ CREATE TABLE IF NOT EXISTS api_tokens (
 	// Column additions for databases created by earlier versions; the error
 	// when the column already exists is expected and ignored.
 	db.Exec(`ALTER TABLE users ADD COLUMN disk_quota_mb INTEGER NOT NULL DEFAULT 0`)
+	db.Exec(`ALTER TABLE db_entries ADD COLUMN engine TEXT NOT NULL DEFAULT 'mysql'`)
 	return nil
 }
 

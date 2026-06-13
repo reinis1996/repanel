@@ -64,6 +64,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("DELETE /api/mail/aliases/{id}", s.user(s.handleAliasDelete))
 
 	mux.Handle("GET /api/databases", s.user(s.handleDBList))
+	mux.Handle("GET /api/database-engines", s.user(s.handleDBEngines))
 	mux.Handle("POST /api/databases", s.user(s.handleDBCreate))
 	mux.Handle("DELETE /api/databases/{id}", s.user(s.handleDBDelete))
 	mux.Handle("POST /api/databases/{id}/password", s.user(s.handleDBPassword))

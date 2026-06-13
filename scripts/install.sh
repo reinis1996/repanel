@@ -13,6 +13,7 @@ PANEL_PORT=8443
 CONF_DIR=/etc/repanel
 DATA_DIR=/var/lib/repanel
 BIN=/usr/local/bin/repanel
+CLI_BIN=/usr/local/bin/repctl
 
 say()  { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 fail() { printf '\033[1;31mERROR:\033[0m %s\n' "$*" >&2; exit 1; }
@@ -38,14 +39,26 @@ apt-get install -y -qq \
 PHP_VER="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null || echo 8.2)"
 say "Detected PHP $PHP_VER"
 
-# ---- panel binary ----------------------------------------------------------
+# ---- optional PostgreSQL ---------------------------------------------------
+# RePanel manages PostgreSQL databases when a server is present; it is not part
+# of the default stack. Set WITH_POSTGRES=1 to install it here, or install
+# `postgresql` yourself later — the panel detects it automatically.
+if [ "${WITH_POSTGRES:-0}" = 1 ]; then
+  say "Installing PostgreSQL (WITH_POSTGRES=1)"
+  apt-get install -y -qq postgresql php-pgsql >/dev/null
+  systemctl enable --now postgresql >/dev/null 2>&1 || true
+fi
+
+# ---- panel binary + CLI ----------------------------------------------------
 if [ -x ./repanel ]; then
   say "Using local repanel binary"
   install -m 755 ./repanel "$BIN"
+  [ -x ./repctl ] && install -m 755 ./repctl "$CLI_BIN"
 elif [ -f ./go.mod ] && command -v go >/dev/null 2>&1; then
   say "Building repanel from source"
   (cd web && command -v npm >/dev/null 2>&1 && npm install --silent && npm run build --silent) || true
   go build -o "$BIN" ./cmd/repanel
+  go build -o "$CLI_BIN" ./cmd/repctl || true
 else
   ARCH="$(uname -m)"
   case "$ARCH" in
@@ -57,6 +70,12 @@ else
   say "Downloading $URL"
   curl -fsSL -o "$BIN" "$URL" || fail "download failed — build from source instead (see README)"
   chmod 755 "$BIN"
+  # The CLI is optional; don't fail the install if it isn't published yet.
+  if curl -fsSL -o "$CLI_BIN" "https://github.com/$REPO/releases/latest/download/repctl-linux-$ARCH"; then
+    chmod 755 "$CLI_BIN"
+  else
+    rm -f "$CLI_BIN"
+  fi
 fi
 
 # ---- directories & config --------------------------------------------------

@@ -102,6 +102,7 @@ export interface DatabaseEntry {
   user_id: number
   name: string
   db_user: string
+  engine: string // mysql | postgres
   created_at: string
   size_mb: number
 }

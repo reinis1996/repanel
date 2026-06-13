@@ -13,6 +13,7 @@ var ManagedServices = []models.ServiceStatus{
 	{Name: "nginx", DisplayName: "Web Server (nginx)", Description: "Serves customer websites"},
 	{Name: "php8.3-fpm", DisplayName: "PHP-FPM 8.3", Description: "PHP application server"},
 	{Name: "mariadb", DisplayName: "Database (MariaDB)", Description: "MySQL-compatible database server"},
+	{Name: "postgresql", DisplayName: "Database (PostgreSQL)", Description: "PostgreSQL database server"},
 	{Name: "bind9", DisplayName: "DNS Server (BIND)", Description: "Authoritative DNS"},
 	{Name: "postfix", DisplayName: "Mail (Postfix)", Description: "SMTP server"},
 	{Name: "dovecot", DisplayName: "Mail (Dovecot)", Description: "IMAP/POP3 server"},
