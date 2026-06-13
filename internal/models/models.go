@@ -99,6 +99,21 @@ type Domain struct {
 	Owner string `json:"owner,omitempty"`
 }
 
+// App is a one-click application (e.g. WordPress) installed into a domain.
+type App struct {
+	ID        int64     `json:"id"`
+	DomainID  int64     `json:"domain_id"`
+	App       string    `json:"app"`
+	Status    string    `json:"status"` // installing | installed | failed
+	Error     string    `json:"error"`
+	URL       string    `json:"url"`
+	DBName    string    `json:"db_name"`
+	AutoSetup bool      `json:"auto_setup"` // admin account created automatically
+	CreatedAt time.Time `json:"created_at"`
+	// Joined
+	Domain string `json:"domain,omitempty"`
+}
+
 type DNSRecord struct {
 	ID       int64  `json:"id"`
 	ZoneID   int64  `json:"zone_id"`

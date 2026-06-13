@@ -63,6 +63,19 @@ export interface Domain {
   owner?: string
 }
 
+export interface App {
+  id: number
+  domain_id: number
+  app: string
+  status: 'installing' | 'installed' | 'failed'
+  error: string
+  url: string
+  db_name: string
+  auto_setup: boolean
+  created_at: string
+  domain?: string
+}
+
 export interface DNSZone {
   id: number
   domain_id: number

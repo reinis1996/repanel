@@ -39,6 +39,17 @@ apt-get install -y -qq \
 PHP_VER="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null || echo 8.2)"
 say "Detected PHP $PHP_VER"
 
+# ---- WP-CLI (completes one-click WordPress installs) -----------------------
+if ! command -v wp >/dev/null 2>&1; then
+  say "Installing WP-CLI"
+  if curl -fsSL -o /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar; then
+    chmod 755 /usr/local/bin/wp
+  else
+    rm -f /usr/local/bin/wp
+    say "WARNING: WP-CLI download failed — WordPress installs will need the browser setup wizard"
+  fi
+fi
+
 # ---- optional PostgreSQL ---------------------------------------------------
 # RePanel manages PostgreSQL databases when a server is present; it is not part
 # of the default stack. Set WITH_POSTGRES=1 to install it here, or install

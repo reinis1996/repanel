@@ -13,6 +13,7 @@
 - **File Manager** — browse, upload, download, edit, rename and delete inside a jailed web space
 - **FTP** — ProFTPD accounts jailed to a chosen directory
 - **SSL/TLS** — one-click Let's Encrypt (with automatic nightly renewal) or self-signed certificates
+- **One-click apps** — install WordPress into any domain: RePanel downloads core, provisions a dedicated database, writes `wp-config.php`, and (with WP-CLI) creates the admin account
 - **Scheduled tasks** — cron jobs that run as the customer's system user
 - **Backups** — on-demand and nightly per-account archives (web files + mail + database dumps in plain tar.gz), with download, retention and one-click restore
 - **Usage & quotas** — live disk usage per account (web/mail/databases) with optional disk quotas enforced on uploads, mailboxes and databases
@@ -102,7 +103,7 @@ Design principles:
 - [x] Disk usage statistics & per-account disk quotas
 - [x] Traffic accounting per account
 - [ ] Webmail (Roundcube one-click install)
-- [ ] One-click apps (WordPress installer)
+- [x] One-click apps (WordPress installer)
 - [ ] DKIM/DMARC management & rspamd integration
 - [ ] Apache as an alternative web server
 - [x] PostgreSQL support (alongside MariaDB)

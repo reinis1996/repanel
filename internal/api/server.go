@@ -49,6 +49,9 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("POST /api/domains/{id}/suspend", s.user(s.handleDomainSuspend))
 	mux.Handle("POST /api/domains/{id}/php", s.user(s.handleDomainPHP))
 	mux.Handle("GET /api/php-versions", s.user(s.handlePHPVersions))
+	mux.Handle("GET /api/apps", s.user(s.handleAppList))
+	mux.Handle("POST /api/domains/{id}/apps", s.user(s.handleAppInstall))
+	mux.Handle("DELETE /api/apps/{id}", s.user(s.handleAppDelete))
 
 	mux.Handle("GET /api/dns", s.user(s.handleZoneList))
 	mux.Handle("GET /api/dns/{id}", s.user(s.handleZoneGet))
