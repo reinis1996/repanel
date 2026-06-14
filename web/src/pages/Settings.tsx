@@ -9,7 +9,13 @@ const FIELDS: { key: string; label: string; hint: string; placeholder?: string; 
   { key: 'server_ip', label: 'Server public IP', hint: 'Default A record for new DNS zones', placeholder: '203.0.113.10' },
   { key: 'panel_hostname', label: 'Panel hostname', hint: 'FQDN of this server', placeholder: 'panel.example.com' },
   { key: 'ns1', label: 'Primary nameserver', hint: 'Used in SOA/NS records', placeholder: 'ns1.example.com' },
-  { key: 'ns2', label: 'Secondary nameserver', hint: 'Optional', placeholder: 'ns2.example.com' },
+  { key: 'ns2', label: 'Secondary nameserver', hint: 'Optional — added as a second NS record on every zone', placeholder: 'ns2.example.com' },
+  {
+    key: 'slave_dns',
+    label: 'Secondary DNS server IPs',
+    hint: 'Comma-separated IPs allowed to transfer (AXFR) and notified on change',
+    placeholder: '198.51.100.2, 203.0.113.9',
+  },
   { key: 'admin_email', label: 'Admin email', hint: "Used for Let's Encrypt and zone SOA", placeholder: 'admin@example.com' },
   {
     key: 'backup_schedule',

@@ -7,7 +7,7 @@
 ## Features
 
 - **Websites & Domains** — per-domain nginx vhosts with isolated PHP-FPM pools (each site runs as its own system user), selectable PHP version, suspend/unsuspend
-- **DNS** — authoritative zones served by BIND with a full record editor (A, AAAA, CNAME, MX, TXT, NS, SRV, CAA) and sane default zone templates
+- **DNS** — authoritative zones served by BIND with a full record editor (A, AAAA, CNAME, MX, TXT, NS, SRV, CAA) and sane default zone templates; optional secondary DNS servers receive zone transfers (AXFR) and change notifications automatically
 - **Mail** — virtual mailboxes and aliases on Postfix + Dovecot (IMAP/POP3/SMTP auth), per-mailbox quotas, one-click DKIM signing (OpenDKIM) with DMARC/SPF records published automatically into managed zones
 - **Webmail** — opt-in Roundcube webmail served at `webmail.<domain>`, enabled per domain from the Mail page (with the `webmail` DNS record published into managed zones)
 - **Databases** — MariaDB and (optional) PostgreSQL databases with a dedicated user per database, live size reporting
@@ -116,7 +116,7 @@ Design principles:
 - [x] DKIM/DMARC management (OpenDKIM signing + DNS records)
 - [ ] Apache as an alternative web server
 - [x] PostgreSQL support (alongside MariaDB)
-- [ ] Multi-server / slave DNS
+- [x] Secondary / slave DNS (zone transfers + NOTIFY to secondary nameservers)
 - [x] API tokens (personal access tokens for the REST API)
 - [x] CLI client (`repctl`)
 - [ ] Localization

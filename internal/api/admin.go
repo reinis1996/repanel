@@ -112,7 +112,11 @@ func (s *Server) handleFirewallToggle(w http.ResponseWriter, r *http.Request, _ 
 
 // ---- settings ----
 
-var editableSettings = []string{"server_ip", "ns1", "ns2", "admin_email", "panel_hostname", "backup_schedule", "backup_keep"}
+var editableSettings = []string{"server_ip", "ns1", "ns2", "admin_email", "panel_hostname", "backup_schedule", "backup_keep", "slave_dns"}
+
+// dnsSettings change the contents of generated zone files / named.conf, so
+// saving any of them re-renders every hosted zone.
+var dnsSettings = map[string]bool{"ns1": true, "ns2": true, "admin_email": true, "slave_dns": true}
 
 func (s *Server) handleSettingsGet(w http.ResponseWriter, r *http.Request, _ *models.User) {
 	out := map[string]string{}
@@ -128,13 +132,59 @@ func (s *Server) handleSettingsSet(w http.ResponseWriter, r *http.Request, _ *mo
 		s.err(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
+	dnsChanged := false
 	for _, k := range editableSettings {
-		if v, ok := req[k]; ok {
-			if err := s.DB.SetSetting(k, strings.TrimSpace(v)); err != nil {
-				s.fail(w, "save setting", err)
+		v, ok := req[k]
+		if !ok {
+			continue
+		}
+		v = strings.TrimSpace(v)
+		if k == "slave_dns" {
+			// Normalize to the valid IPs so an invalid entry can't silently
+			// disable transfers; reject if the user typed something unparseable.
+			ips := system.ParseSlaveIPs(v)
+			if v != "" && len(ips) != len(strings.FieldsFunc(v, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' || r == '\n' })) {
+				s.err(w, http.StatusBadRequest, "slave DNS must be a comma-separated list of IP addresses")
 				return
 			}
+			v = strings.Join(ips, ", ")
+		}
+		if v != s.DB.Setting(k) && dnsSettings[k] {
+			dnsChanged = true
+		}
+		if err := s.DB.SetSetting(k, v); err != nil {
+			s.fail(w, "save setting", err)
+			return
+		}
+	}
+	if dnsChanged {
+		if err := s.rewriteAllZones(); err != nil {
+			s.fail(w, "rewrite zones", err)
+			return
 		}
 	}
 	s.json(w, map[string]bool{"ok": true})
+}
+
+// rewriteAllZones re-renders every hosted zone file (and named.conf) so that
+// changes to nameserver / secondary-DNS settings take effect immediately.
+func (s *Server) rewriteAllZones() error {
+	rows, err := s.DB.Query(`SELECT id FROM dns_zones`)
+	if err != nil {
+		return err
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if rows.Scan(&id) == nil {
+			ids = append(ids, id)
+		}
+	}
+	rows.Close()
+	for _, id := range ids {
+		if err := s.writeZoneFile(id); err != nil {
+			return err
+		}
+	}
+	return nil
 }

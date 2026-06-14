@@ -89,15 +89,22 @@ func (s *Server) writeZoneFile(zoneID int64) error {
 		return err
 	}
 	s.DB.Exec(`UPDATE dns_zones SET serial = serial + 1 WHERE id = ?`, zoneID)
-	ns1 := s.DB.Setting("ns1")
-	if ns1 != "" && !strings.HasSuffix(ns1, ".") {
-		ns1 += "."
-	}
+	ns1 := fqdn(s.DB.Setting("ns1"))
+	ns2 := fqdn(s.DB.Setting("ns2"))
 	adminMail := s.DB.Setting("admin_email")
 	if adminMail != "" {
 		adminMail = strings.Replace(adminMail, "@", ".", 1) + "."
 	}
-	return system.WriteZone(s.Cfg.BindDir, z, ns1, adminMail)
+	slaveIPs := system.ParseSlaveIPs(s.DB.Setting("slave_dns"))
+	return system.WriteZone(s.Cfg.BindDir, z, ns1, ns2, adminMail, slaveIPs)
+}
+
+// fqdn returns a nameserver hostname with a trailing dot, or "" if unset.
+func fqdn(host string) string {
+	if host == "" || strings.HasSuffix(host, ".") {
+		return host
+	}
+	return host + "."
 }
 
 type recordRequest struct {

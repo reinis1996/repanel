@@ -151,7 +151,7 @@ func (s *Server) handleDomainDelete(w http.ResponseWriter, r *http.Request, u *m
 		return
 	}
 	system.RemoveVhost(s.Cfg.NginxDir, *d)
-	system.RemoveZone(s.Cfg.BindDir, d.Name)
+	system.RemoveZone(s.Cfg.BindDir, d.Name, system.ParseSlaveIPs(s.DB.Setting("slave_dns")))
 	if _, err := s.DB.Exec(`DELETE FROM domains WHERE id = ?`, d.ID); err != nil {
 		s.fail(w, "delete domain", err)
 		return
