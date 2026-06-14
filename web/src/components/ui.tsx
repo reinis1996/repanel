@@ -42,7 +42,7 @@ export function Card({
   className?: string
 }) {
   return (
-    <div className={`bg-white rounded-lg border border-slate-200 shadow-sm ${className}`}>
+    <div className={`bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden ${className}`}>
       {(title || actions) && (
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
           <h2 className="text-sm font-semibold text-slate-700">{title}</h2>
@@ -149,7 +149,7 @@ export function Modal({
 
 export function Table({ head, children }: { head: string[]; children: ReactNode }) {
   return (
-    <div className="overflow-x-auto -mx-5 -mb-5">
+    <div className="overflow-x-auto -mx-5 -mt-5 -mb-5">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50/60">
