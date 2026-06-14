@@ -74,6 +74,7 @@ type APIToken struct {
 	UserID     int64      `json:"user_id"`
 	Name       string     `json:"name"`
 	Prefix     string     `json:"prefix"`
+	Scope      string     `json:"scope"` // full | readonly
 	LastUsedAt *time.Time `json:"last_used_at"`
 	ExpiresAt  *time.Time `json:"expires_at"`
 	CreatedAt  time.Time  `json:"created_at"`

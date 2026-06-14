@@ -60,7 +60,7 @@ func (s *Server) sysUserForPanelUser(userID int64) (string, error) {
 	if err != nil || u == nil {
 		return "", fmt.Errorf("panel user %d not found", userID)
 	}
-	name := system.SysUserName(u.Username)
+	name := system.SysUserName(u.ID)
 	home := filepath.Join(s.Cfg.WebRoot, name)
 	if err := system.EnsureUnixUser(name, home); err != nil {
 		return "", err
@@ -93,6 +93,20 @@ func (s *Server) handleDomainCreate(w http.ResponseWriter, r *http.Request, u *m
 		}
 		ownerID = req.UserID
 	}
+	// Tenant isolation: refuse a domain that overlaps another tenant's domain
+	// (the same name, a subdomain of theirs, or a parent of theirs), which would
+	// otherwise let one customer serve/sign hostnames inside another's zone
+	// (see SECURITY_AUDIT F-07). Note: this does not prove external ownership of
+	// the domain — out-of-band DNS/HTTP verification is still recommended.
+	var conflict int
+	s.DB.QueryRow(`SELECT COUNT(*) FROM domains
+		WHERE user_id != ? AND (name = ? OR ? LIKE '%.' || name OR name LIKE '%.' || ?)`,
+		ownerID, name, name, name).Scan(&conflict)
+	if conflict > 0 {
+		s.err(w, http.StatusConflict, "this domain overlaps a domain owned by another account")
+		return
+	}
+
 	phpVersion := req.PHPVersion
 	if phpVersion == "" {
 		phpVersion = system.PHPVersions()[0]

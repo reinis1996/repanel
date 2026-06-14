@@ -44,8 +44,8 @@ func (s *Server) handleFTPCreate(w http.ResponseWriter, r *http.Request, u *mode
 		s.err(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	username := strings.ToLower(strings.TrimSpace(req.Username))
-	if !validFTPUser.MatchString(username) {
+	label := strings.ToLower(strings.TrimSpace(req.Username))
+	if !validFTPUser.MatchString(label) {
 		s.err(w, http.StatusBadRequest, "username must be 3-31 chars: lowercase letters, digits, - or _")
 		return
 	}
@@ -56,6 +56,14 @@ func (s *Server) handleFTPCreate(w http.ResponseWriter, r *http.Request, u *mode
 	sysUser, err := s.sysUserForPanelUser(u.ID)
 	if err != nil {
 		s.fail(w, "resolve system user", err)
+		return
+	}
+	// The real unix account is namespaced under the owning tenant so it can
+	// never collide with a system account (root, www-data, …) or another
+	// tenant's account (see SECURITY_AUDIT F-01). Linux caps usernames at 32.
+	username := sysUser + "-" + label
+	if len(username) > 32 {
+		s.err(w, http.StatusBadRequest, "username is too long")
 		return
 	}
 	base := filepath.Join(s.Cfg.WebRoot, sysUser)
@@ -70,7 +78,9 @@ func (s *Server) handleFTPCreate(w http.ResponseWriter, r *http.Request, u *mode
 		s.err(w, http.StatusConflict, "ftp account already exists")
 		return
 	}
-	if err := system.EnsureUnixUser(username, home); err != nil {
+	// CreateUnixUser refuses to adopt a pre-existing account, so a crafted
+	// name can never hijack an existing system/foreign account.
+	if err := system.CreateUnixUser(username, home); err != nil {
 		s.DB.Exec(`DELETE FROM ftp_accounts WHERE username = ?`, username)
 		s.fail(w, "create system user", err)
 		return

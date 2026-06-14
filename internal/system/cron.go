@@ -12,11 +12,15 @@ import (
 const cronFile = "/etc/cron.d/repanel"
 
 // cron.d entries require a user field; jobs run as the owning system user.
-var cronScheduleRe = regexp.MustCompile(`^(@(reboot|yearly|annually|monthly|weekly|daily|hourly)|(\S+\s+){4}\S+)$`)
+// Fields are separated by spaces only — using a literal space (not \s, which
+// matches newlines) prevents a crafted schedule from injecting extra cron.d
+// lines (see SECURITY_AUDIT F-12).
+var cronScheduleRe = regexp.MustCompile(`^(@(reboot|yearly|annually|monthly|weekly|daily|hourly)|(\S+ +){4}\S+)$`)
 
 // ValidateCronSchedule loosely validates a 5-field or @keyword schedule.
 func ValidateCronSchedule(s string) error {
-	if !cronScheduleRe.MatchString(strings.TrimSpace(s)) {
+	s = strings.TrimSpace(s)
+	if strings.ContainsAny(s, "\n\r\t") || !cronScheduleRe.MatchString(s) {
 		return fmt.Errorf("invalid cron schedule %q (expected 5 fields or @daily style)", s)
 	}
 	return nil

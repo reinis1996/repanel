@@ -24,12 +24,37 @@ type FileEntry struct {
 
 const maxEditableSize = 2 << 20 // 2 MB limit for in-browser editing
 
-// ResolveJailed joins rel onto jail and guarantees the result stays inside.
+// ResolveJailed joins rel onto jail and guarantees the result stays inside —
+// not only lexically but after resolving symlinks. The panel performs file
+// operations as root, so without symlink resolution a tenant could plant a
+// symlink in their own web space (e.g. via FTP) pointing at /etc or another
+// tenant's directory and read/write it through the file manager or a restore
+// (see SECURITY_AUDIT F-02/F-05).
 func ResolveJailed(jail, rel string) (string, error) {
+	// Canonicalise the jail itself so a symlinked base doesn't trip the check.
+	if rj, err := filepath.EvalSymlinks(jail); err == nil {
+		jail = rj
+	}
 	jail = filepath.Clean(jail)
-	p := filepath.Join(jail, filepath.FromSlash(rel))
-	p = filepath.Clean(p)
-	if p != jail && !strings.HasPrefix(p, jail+string(filepath.Separator)) {
+	p := filepath.Clean(filepath.Join(jail, filepath.FromSlash(rel)))
+
+	// Resolve symlinks on the deepest existing ancestor of p. If any existing
+	// component (including p itself when it exists) resolves outside the jail,
+	// reject. New (not-yet-existing) tail components are created by us and are
+	// never symlinks, so verifying the existing prefix is sufficient.
+	real := p
+	for {
+		if r, err := filepath.EvalSymlinks(real); err == nil {
+			real = r
+			break
+		}
+		parent := filepath.Dir(real)
+		if parent == real {
+			break // reached the volume root without resolving
+		}
+		real = parent
+	}
+	if real != jail && !strings.HasPrefix(real, jail+string(filepath.Separator)) {
 		return "", fmt.Errorf("path escapes home directory")
 	}
 	return p, nil

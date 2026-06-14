@@ -34,7 +34,7 @@ func (s *Server) usageFor(userID int64, username string, quotaMB int64) models.U
 	}
 	usageMu.Unlock()
 
-	sysUser := system.SysUserName(username)
+	sysUser := system.SysUserName(userID)
 	usage := models.Usage{UserID: userID, Username: username, DiskQuotaMB: quotaMB}
 	usage.WebMB = system.DirSizeMB(filepath.Join(s.Cfg.WebRoot, sysUser))
 

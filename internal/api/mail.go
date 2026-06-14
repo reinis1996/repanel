@@ -2,11 +2,21 @@ package api
 
 import (
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/reinis1996/repanel/internal/models"
 	"github.com/reinis1996/repanel/internal/system"
 )
+
+// validLocalPart constrains the local part of an email address so it cannot be
+// used for path traversal when it is turned into a maildir path or written into
+// the postfix maps (see SECURITY_AUDIT F-06). No leading/trailing dot, no "..".
+var validLocalPart = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9._%+-]{0,62}[a-z0-9])?$`)
+
+func validMailLocalPart(local string) bool {
+	return validLocalPart.MatchString(local) && !strings.Contains(local, "..")
+}
 
 // rebuildMail regenerates all postfix/dovecot maps from database state.
 func (s *Server) rebuildMail() error {
@@ -117,7 +127,7 @@ func (s *Server) handleMailboxCreate(w http.ResponseWriter, r *http.Request, u *
 	}
 	addr := strings.ToLower(strings.TrimSpace(req.Address))
 	local, domainName, ok := strings.Cut(addr, "@")
-	if !ok || local == "" || !validDomainName(domainName) || strings.ContainsAny(local, " \t\n:") {
+	if !ok || !validMailLocalPart(local) || !validDomainName(domainName) {
 		s.err(w, http.StatusBadRequest, "invalid mail address")
 		return
 	}
@@ -226,8 +236,10 @@ func (s *Server) handleAliasCreate(w http.ResponseWriter, r *http.Request, u *mo
 	source := strings.ToLower(strings.TrimSpace(req.Source))
 	dest := strings.ToLower(strings.TrimSpace(req.Destination))
 	local, domainName, ok := strings.Cut(source, "@")
-	if !ok || local == "" || !strings.Contains(dest, "@") ||
-		strings.ContainsAny(source+dest, " \t\n") {
+	destLocal, destDomain, destOK := strings.Cut(dest, "@")
+	if !ok || !validMailLocalPart(local) || !validDomainName(domainName) ||
+		!destOK || !validMailLocalPart(destLocal) || !validDomainName(destDomain) ||
+		strings.ContainsAny(source+dest, " \t\n\r") {
 		s.err(w, http.StatusBadRequest, "invalid alias")
 		return
 	}

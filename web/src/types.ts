@@ -37,6 +37,7 @@ export interface APIToken {
   user_id: number
   name: string
   prefix: string
+  scope: string // full | readonly
   last_used_at: string | null
   expires_at: string | null
   created_at: string

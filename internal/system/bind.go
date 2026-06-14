@@ -95,14 +95,12 @@ func WriteZone(bindDir string, zone models.DNSZone, primaryNS, secondaryNS, admi
 	return reloadBind()
 }
 
-// formatTXT renders a TXT record value for a BIND zone file. A value already
-// wrapped in quotes is passed through; otherwise it is escaped and, when longer
-// than the 255-byte per-string limit, split into multiple quoted chunks (as
-// DKIM public keys require).
+// formatTXT renders a TXT record value for a BIND zone file. The value is
+// always escaped and quoted (never passed through as-is — a caller-supplied
+// leading quote must not let raw text reach the zone file; see SECURITY_AUDIT
+// F-13) and, when longer than the 255-byte per-string limit, split into
+// multiple quoted chunks (as DKIM public keys require).
 func formatTXT(v string) string {
-	if strings.HasPrefix(v, `"`) {
-		return v
-	}
 	v = strings.ReplaceAll(v, `"`, `\"`)
 	if len(v) <= 255 {
 		return `"` + v + `"`

@@ -34,7 +34,15 @@ curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/main/scripts/ins
 
 Then open `https://<server-ip>:8443` and create the administrator account. The installer sets up nginx, PHP-FPM, MariaDB, BIND, Postfix, Dovecot, ProFTPD, certbot, ufw and fail2ban, and wires them all to the panel. It also installs the `repctl` command-line client.
 
-> The panel serves its UI over HTTPS with a self-signed certificate by default; point `TLS_CERT` / `TLS_KEY` in `/etc/repanel/repanel.conf` at a real certificate to remove the browser warning.
+> The panel serves its UI over HTTPS with a self-signed certificate by default; point `TLS_CERT` / `TLS_KEY` in `/etc/repanel/repanel.conf` at a real certificate to remove the browser warning. Until then sessions on that host transit a self-signed channel — use a real certificate before exposing the panel publicly.
+
+> **Verifying the download.** Each release publishes a `repanel-linux-<arch>.sha256` next to the binary. To audit before running, fetch and check it rather than piping the installer straight into a shell:
+> ```sh
+> ARCH=amd64
+> base=https://github.com/reinis1996/repanel/releases/latest/download
+> curl -fsSLO "$base/repanel-linux-$ARCH" -O "$base/repanel-linux-$ARCH.sha256"
+> sha256sum -c "repanel-linux-$ARCH.sha256"
+> ```
 
 ### Choosing a web server
 

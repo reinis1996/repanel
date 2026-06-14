@@ -142,6 +142,9 @@ func (s *Server) handleUserUpdate(w http.ResponseWriter, r *http.Request, u *mod
 			s.fail(w, "update password", err)
 			return
 		}
+		// Force re-login everywhere after an admin/reseller password reset
+		// (SECURITY_AUDIT F-17).
+		s.DB.Exec(`DELETE FROM sessions WHERE user_id = ?`, target.ID)
 	}
 	if req.Role != nil && u.Role == models.RoleAdmin {
 		role := models.Role(*req.Role)

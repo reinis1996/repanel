@@ -80,6 +80,24 @@ func (m *Manager) UserForRequest(r *http.Request) *models.User {
 	return nil
 }
 
+// RequestReadOnly reports whether the request is authenticated with a
+// read-only personal API token. Cookie (browser) sessions are always full
+// access. Used by the API to reject mutating requests from read-only tokens
+// (see SECURITY_AUDIT F-18).
+func (m *Manager) RequestReadOnly(r *http.Request) bool {
+	h := r.Header.Get("Authorization")
+	if !strings.HasPrefix(h, "Bearer ") {
+		return false
+	}
+	token := strings.TrimSpace(h[len("Bearer "):])
+	if !strings.HasPrefix(token, TokenPrefix) {
+		return false
+	}
+	var scope string
+	m.DB.QueryRow(`SELECT scope FROM api_tokens WHERE token_hash = ?`, HashToken(token)).Scan(&scope)
+	return scope == "readonly"
+}
+
 func (m *Manager) userForSession(token string) *models.User {
 	var userID int64
 	var expires time.Time

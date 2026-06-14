@@ -106,7 +106,7 @@ func (s *Server) handleAppInstall(w http.ResponseWriter, r *http.Request, u *mod
 	}
 	appID, _ := res.LastInsertId()
 
-	sysUser := system.SysUserName(ownerUsername(s, d.UserID))
+	sysUser := system.SysUserName(d.UserID)
 	opts := system.WordPressOptions{
 		DocRoot:    d.DocumentRoot,
 		SysUser:    sysUser,
@@ -181,11 +181,4 @@ func randomHex(n int) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(buf), nil
-}
-
-// ownerUsername returns the panel username for a user id, "" when unknown.
-func ownerUsername(s *Server, userID int64) string {
-	var name string
-	s.DB.QueryRow(`SELECT username FROM users WHERE id = ?`, userID).Scan(&name)
-	return name
 }

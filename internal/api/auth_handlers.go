@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/reinis1996/repanel/internal/auth"
@@ -15,6 +16,12 @@ type loginRequest struct {
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+	ip := clientIP(r)
+	if ok, retry := s.login.allowed(ip); !ok {
+		w.Header().Set("Retry-After", strconv.Itoa(int(retry.Seconds())+1))
+		s.err(w, http.StatusTooManyRequests, "too many failed attempts; try again later")
+		return
+	}
 	req, err := decode[loginRequest](r)
 	if err != nil {
 		s.err(w, http.StatusBadRequest, "invalid request body")
@@ -22,9 +29,11 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	token, u, err := s.Auth.Login(strings.TrimSpace(req.Username), req.Password)
 	if err != nil {
+		s.login.fail(ip)
 		s.err(w, http.StatusUnauthorized, "invalid username or password")
 		return
 	}
+	s.login.success(ip)
 	http.SetCookie(w, &http.Cookie{
 		Name:     auth.CookieName,
 		Value:    token,
@@ -71,6 +80,13 @@ func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request, u 
 		s.fail(w, "update password", err)
 		return
 	}
+	// Invalidate all other sessions for this user; keep the current one so the
+	// caller stays logged in (SECURITY_AUDIT F-17).
+	current := ""
+	if c, err := r.Cookie(auth.CookieName); err == nil {
+		current = c.Value
+	}
+	s.DB.Exec(`DELETE FROM sessions WHERE user_id = ? AND token != ?`, u.ID, current)
 	s.json(w, map[string]bool{"ok": true})
 }
 
@@ -89,6 +105,9 @@ func (s *Server) handleSetupStatus(w http.ResponseWriter, r *http.Request) {
 // handleSetup creates the initial admin account; only works while no admin
 // exists (i.e. right after installation).
 func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
+	// Serialize so two concurrent setup requests can't both create an admin.
+	s.setupMu.Lock()
+	defer s.setupMu.Unlock()
 	if s.adminExists() {
 		s.err(w, http.StatusForbidden, "setup already completed")
 		return

@@ -11,6 +11,15 @@ import (
 
 var validDBInput = regexp.MustCompile(`^[A-Za-z0-9_]{1,48}$`)
 
+// reservedDBUsers are administrative MySQL/PostgreSQL accounts a tenant must
+// never be able to name as their database user (see SECURITY_AUDIT F-03).
+var reservedDBUsers = map[string]bool{
+	"root": true, "mysql": true, "admin": true, "mariadb.sys": true,
+	"mysql.sys": true, "mysql.session": true, "mysql.infoschema": true,
+	"debian-sys-maint": true, "postgres": true, "pg_signal_backend": true,
+	"pg_read_all_data": true, "pg_write_all_data": true,
+}
+
 func (s *Server) handleDBList(w http.ResponseWriter, r *http.Request, u *models.User) {
 	where, args := scopeWhere(u, "user_id")
 	rows, err := s.DB.Query(`SELECT id, user_id, name, db_user, engine, created_at FROM db_entries
@@ -85,6 +94,19 @@ func (s *Server) handleDBCreate(w http.ResponseWriter, r *http.Request, u *model
 	}
 	if len(req.Password) < 8 {
 		s.err(w, http.StatusBadRequest, "password must be at least 8 characters")
+		return
+	}
+	// Tenant isolation: a customer must not be able to name an administrative
+	// DB account, nor a DB user already owned by another tenant (which would
+	// let them attach to or reset that user — see SECURITY_AUDIT F-03).
+	if reservedDBUsers[strings.ToLower(dbUser)] {
+		s.err(w, http.StatusBadRequest, "that database user name is reserved")
+		return
+	}
+	var taken int
+	s.DB.QueryRow(`SELECT COUNT(*) FROM db_entries WHERE db_user = ? AND user_id != ?`, dbUser, u.ID).Scan(&taken)
+	if taken > 0 {
+		s.err(w, http.StatusConflict, "that database user name is already in use")
 		return
 	}
 	engine := normalizeEngine(req.Engine)

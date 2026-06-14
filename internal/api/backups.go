@@ -131,7 +131,7 @@ func (s *Server) runBackup(backupID int64, target *models.User, filename string)
 	s.fillManifestDetails(target.ID, &manifest)
 	manifestJSON, _ := json.MarshalIndent(manifest, "", "  ")
 
-	sysUser := system.SysUserName(target.Username)
+	sysUser := system.SysUserName(target.ID)
 	sources := []system.BackupSource{
 		{Prefix: "web", Dir: filepath.Join(s.Cfg.WebRoot, sysUser)},
 	}
@@ -316,7 +316,7 @@ func (s *Server) handleBackupRestore(w http.ResponseWriter, r *http.Request, u *
 		return
 	}
 
-	sysUser := system.SysUserName(target.Username)
+	sysUser := system.SysUserName(target.ID)
 	dirTargets := map[string]string{
 		"web": filepath.Join(s.Cfg.WebRoot, sysUser),
 	}

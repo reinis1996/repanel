@@ -45,7 +45,8 @@
       "PowerShell(go test ./internal/system/ 2>&1)",
       "PowerShell(go test ./... 2>&1)",
       "PowerShell(go test ./... 2>&1 | Out-String -Stream | Where-Object { $_ -match 'ok|FAIL|panic|---' })",
-      "PowerShell(go test -count=1 ./internal/... ./cmd/... 2>&1)"
+      "PowerShell(go test -count=1 ./internal/... ./cmd/... 2>&1)",
+      "Bash(git checkout *)"
     ]
   }
 }

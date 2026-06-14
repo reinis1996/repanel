@@ -195,6 +195,8 @@ CREATE TABLE IF NOT EXISTS api_tokens (
 	// Per-domain web server mode (nginx | apache | nginx-apache); empty means
 	// "the stack default", resolved at vhost-generation time.
 	db.Exec(`ALTER TABLE domains ADD COLUMN web_mode TEXT NOT NULL DEFAULT ''`)
+	// API token scope: 'full' (default) or 'readonly' (SECURITY_AUDIT F-18).
+	db.Exec(`ALTER TABLE api_tokens ADD COLUMN scope TEXT NOT NULL DEFAULT 'full'`)
 	return nil
 }
 

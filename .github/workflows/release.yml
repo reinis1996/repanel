@@ -23,6 +23,11 @@ on:
 permissions:
   contents: write # create tags, releases and upload assets
 
+# SECURITY_AUDIT F-19: third-party actions below are pinned to major-version
+# tags for readability. For supply-chain hardening, pin each to a full commit
+# SHA (e.g. `actions/checkout@<sha> # v4`) so a compromised/retagged release
+# cannot alter the build.
+
 # Serialize runs so two merges can't compute the same next tag.
 concurrency:
   group: release

@@ -12,6 +12,7 @@ export default function ApiTokens() {
   const [addOpen, setAddOpen] = useState(false)
   const [name, setName] = useState('')
   const [expires, setExpires] = useState('0')
+  const [scope, setScope] = useState('full')
   const [busy, setBusy] = useState(false)
   const [created, setCreated] = useState<APIToken | null>(null)
   const [copied, setCopied] = useState(false)
@@ -23,10 +24,12 @@ export default function ApiTokens() {
       const token = await api.post<APIToken>('/api/tokens', {
         name,
         expires_days: Number(expires),
+        scope,
       })
       setAddOpen(false)
       setName('')
       setExpires('0')
+      setScope('full')
       setCreated(token)
       reload()
     } catch (err) {
@@ -74,11 +77,12 @@ export default function ApiTokens() {
             hint="Create a token to use the panel from scripts or the command line"
           />
         ) : (
-          <Table head={['Name', 'Token', 'Last used', 'Expires', 'Created', '']}>
+          <Table head={['Name', 'Token', 'Scope', 'Last used', 'Expires', 'Created', '']}>
             {data.map((t) => (
               <tr key={t.id} className="hover:bg-slate-50/60">
                 <Td className="font-medium">{t.name}</Td>
                 <Td className="font-mono text-xs text-slate-500">{t.prefix}…</Td>
+                <Td className="text-slate-500">{t.scope === 'readonly' ? 'read-only' : 'full'}</Td>
                 <Td className="text-slate-500">{t.last_used_at ? formatDate(t.last_used_at) : 'never'}</Td>
                 <Td className="text-slate-500">{t.expires_at ? formatDate(t.expires_at) : 'never'}</Td>
                 <Td className="text-slate-500">{formatDate(t.created_at)}</Td>
@@ -105,6 +109,12 @@ export default function ApiTokens() {
               <option value="30">30 days</option>
               <option value="90">90 days</option>
               <option value="365">1 year</option>
+            </Select>
+          </Field>
+          <Field label="Scope" hint="Read-only tokens can only perform GET requests">
+            <Select value={scope} onChange={(e) => setScope(e.target.value)}>
+              <option value="full">Full access</option>
+              <option value="readonly">Read-only</option>
             </Select>
           </Field>
           <div className="flex justify-end gap-2 mt-2">

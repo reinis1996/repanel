@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -187,17 +188,22 @@ func phpEscape(v string) string {
 
 // finishWordPressInstall runs `wp core install` as the site's system user when
 // WP-CLI is available, creating the admin account. Returns true on success.
+//
+// The admin password is supplied on STDIN via `--prompt=admin_password` rather
+// than as a command-line argument, so it never appears in the process list
+// where other local (tenant) users could read it (see SECURITY_AUDIT F-14).
 func finishWordPressInstall(opts WordPressOptions) bool {
 	if !Linux() || !have("wp") || opts.AdminUser == "" {
 		return false
 	}
-	_, err := run("sudo", "-n", "-u", opts.SysUser, "--", "wp",
+	cmd := exec.Command("sudo", "-n", "-u", opts.SysUser, "--", "wp",
 		"--path="+opts.DocRoot, "core", "install",
 		"--url="+opts.SiteURL,
 		"--title="+opts.Title,
 		"--admin_user="+opts.AdminUser,
-		"--admin_password="+opts.AdminPass,
 		"--admin_email="+opts.AdminEmail,
-		"--skip-email")
-	return err == nil
+		"--skip-email",
+		"--prompt=admin_password")
+	cmd.Stdin = strings.NewReader(opts.AdminPass + "\n")
+	return cmd.Run() == nil
 }

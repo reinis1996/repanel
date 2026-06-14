@@ -39,14 +39,14 @@ func CreatePostgresDatabase(name, user, password string) error {
 	if !validDBName.MatchString(name) || !validDBName.MatchString(user) {
 		return fmt.Errorf("database and user names may only contain letters, digits and underscores")
 	}
-	// Create the role if absent; an "already exists" race is tolerated.
+	// Create the role fresh. If it already exists we must NOT adopt or
+	// re-password it — that role may belong to another tenant (or be a system
+	// role), and resetting its password would hand over their databases (see
+	// SECURITY_AUDIT F-03).
 	if _, err := psql(fmt.Sprintf(`CREATE ROLE "%s" LOGIN PASSWORD '%s'`, user, pgEscape(password))); err != nil {
-		if !strings.Contains(err.Error(), "already exists") {
-			return err
+		if strings.Contains(err.Error(), "already exists") {
+			return fmt.Errorf("database user %q already exists", user)
 		}
-	}
-	// Ensure login + password regardless of whether the role pre-existed.
-	if _, err := psql(fmt.Sprintf(`ALTER ROLE "%s" WITH LOGIN PASSWORD '%s'`, user, pgEscape(password))); err != nil {
 		return err
 	}
 	if _, err := psql(fmt.Sprintf(`CREATE DATABASE "%s" OWNER "%s"`, name, user)); err != nil {

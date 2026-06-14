@@ -40,13 +40,23 @@ func CreateDatabase(name, user, password string) error {
 	if !validDBName.MatchString(name) || !validDBName.MatchString(user) {
 		return fmt.Errorf("database and user names may only contain letters, digits and underscores")
 	}
+	// Never adopt a pre-existing MySQL user: doing so would let one tenant
+	// attach their database to (and, via SetDatabasePassword, reset) another
+	// tenant's account (see SECURITY_AUDIT F-03).
+	exists, err := mysqlExec(fmt.Sprintf("SELECT 1 FROM mysql.user WHERE User='%s' AND Host='localhost'", escapeSQLString(user)))
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(exists) == "1" {
+		return fmt.Errorf("database user %q already exists", user)
+	}
 	stmts := []string{
 		fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci", quoteIdent(name)),
-		fmt.Sprintf("CREATE USER IF NOT EXISTS '%s'@'localhost' IDENTIFIED BY '%s'", escapeSQLString(user), escapeSQLString(password)),
+		fmt.Sprintf("CREATE USER '%s'@'localhost' IDENTIFIED BY '%s'", escapeSQLString(user), escapeSQLString(password)),
 		fmt.Sprintf("GRANT ALL PRIVILEGES ON %s.* TO '%s'@'localhost'", quoteIdent(name), escapeSQLString(user)),
 		"FLUSH PRIVILEGES",
 	}
-	_, err := mysqlExec(strings.Join(stmts, "; "))
+	_, err = mysqlExec(strings.Join(stmts, "; "))
 	return err
 }
 

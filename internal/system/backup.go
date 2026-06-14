@@ -158,6 +158,11 @@ func addDatabaseDump(tw *tar.Writer, name string) error {
 	return err
 }
 
+// maxRestoreBytes caps the total uncompressed data a restore will write, so a
+// crafted/corrupt archive (or a decompression bomb) cannot exhaust the disk
+// (see SECURITY_AUDIT F-10).
+const maxRestoreBytes = 50 << 30 // 50 GiB
+
 // RestoreBackup extracts an archive: entries under each prefix in dirTargets
 // are restored to the mapped directory, and databases/<name>.sql files whose
 // name appears in allowedDBs are imported through the mysql client.
@@ -174,6 +179,7 @@ func RestoreBackup(archive string, dirTargets map[string]string, allowedDBs map[
 	defer gz.Close()
 	tr := tar.NewReader(gz)
 
+	var written int64
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
@@ -190,7 +196,11 @@ func RestoreBackup(archive string, dirTargets map[string]string, allowedDBs map[
 			if !allowedDBs[dbName] || !validDBName.MatchString(dbName) {
 				continue
 			}
-			if err := importDatabaseDump(dbName, tr); err != nil {
+			written += hdr.Size
+			if written > maxRestoreBytes {
+				return fmt.Errorf("restore exceeds size limit")
+			}
+			if err := importDatabaseDump(dbName, io.LimitReader(tr, maxRestoreBytes)); err != nil {
 				return fmt.Errorf("restore database %s: %w", dbName, err)
 			}
 			continue
@@ -217,11 +227,15 @@ func RestoreBackup(archive string, dirTargets map[string]string, allowedDBs map[
 				if err != nil {
 					return err
 				}
-				if _, err := io.Copy(out, tr); err != nil {
-					out.Close()
+				n, err := io.Copy(out, io.LimitReader(tr, maxRestoreBytes-written+1))
+				out.Close()
+				if err != nil {
 					return err
 				}
-				out.Close()
+				written += n
+				if written > maxRestoreBytes {
+					return fmt.Errorf("restore exceeds size limit")
+				}
 				chownToUser(dest, sysUser)
 			}
 			break

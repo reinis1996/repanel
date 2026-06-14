@@ -37,8 +37,9 @@ func TestFormatTXT(t *testing.T) {
 	if got := formatTXT("v=spf1 a mx ~all"); got != `"v=spf1 a mx ~all"` {
 		t.Errorf("short TXT = %q", got)
 	}
-	// Already-quoted value passes through untouched.
-	if got := formatTXT(`"already quoted"`); got != `"already quoted"` {
+	// A value containing quotes is always escaped and re-quoted — never passed
+	// through verbatim (SECURITY_AUDIT F-13).
+	if got := formatTXT(`"already quoted"`); got != `"\"already quoted\""` {
 		t.Errorf("quoted TXT = %q", got)
 	}
 	// Long value (e.g. a DKIM key) is split into <=255-byte quoted chunks.

@@ -2,12 +2,15 @@
 package api
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/reinis1996/repanel/internal/auth"
 	"github.com/reinis1996/repanel/internal/config"
@@ -26,6 +29,12 @@ type Server struct {
 	// so the admin PHP manager can poll progress (apt runs in the background).
 	phpMu       sync.Mutex
 	phpInstalls map[string]*phpInstall
+
+	// login throttles failed logins per client IP (SECURITY_AUDIT F-08).
+	login *loginLimiter
+
+	// setupMu serializes first-run admin creation (SECURITY_AUDIT F-16).
+	setupMu sync.Mutex
 }
 
 func New(cfg *config.Config, db *database.DB, version string) *Server {
@@ -35,6 +44,7 @@ func New(cfg *config.Config, db *database.DB, version string) *Server {
 		Auth:        &auth.Manager{DB: db, SessionHours: cfg.SessionHours},
 		Version:     version,
 		phpInstalls: map[string]*phpInstall{},
+		login:       newLoginLimiter(10, 15*time.Minute),
 	}
 }
 
@@ -164,8 +174,24 @@ func (s *Server) user(h handlerWithUser) http.Handler {
 			s.err(w, http.StatusUnauthorized, "not authenticated")
 			return
 		}
+		// Read-only API tokens may only perform safe (non-mutating) requests
+		// (SECURITY_AUDIT F-18).
+		if !safeMethod(r.Method) && s.Auth.RequestReadOnly(r) {
+			s.err(w, http.StatusForbidden, "this API token is read-only")
+			return
+		}
 		h(w, r, u)
 	})
+}
+
+// safeMethod reports whether an HTTP method is non-mutating.
+func safeMethod(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return true
+	default:
+		return false
+	}
 }
 
 // admin restricts to admins; allowReseller extends access to resellers.
@@ -192,14 +218,23 @@ func (s *Server) err(w http.ResponseWriter, code int, msg string) {
 	json.NewEncoder(w).Encode(map[string]string{"error": msg})
 }
 
-// fail logs an internal error and returns a sanitized message to the client.
+// fail logs the full internal error server-side and returns only a generic
+// message plus a correlation reference to the client, so internal details
+// (paths, SQL/CLI stderr) are never disclosed (see SECURITY_AUDIT F-15).
 func (s *Server) fail(w http.ResponseWriter, op string, err error) {
-	log.Printf("ERROR %s: %v", op, err)
-	msg := err.Error()
-	if len(msg) > 300 {
-		msg = msg[:300]
+	ref := errorRef()
+	log.Printf("ERROR %s [ref=%s]: %v", op, ref, err)
+	s.err(w, http.StatusInternalServerError, "internal error (ref "+ref+")")
+}
+
+// errorRef returns a short random reference to correlate a client-facing error
+// with the detailed server log line.
+func errorRef() string {
+	var b [4]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "unknown"
 	}
-	s.err(w, http.StatusInternalServerError, msg)
+	return hex.EncodeToString(b[:])
 }
 
 func decode[T any](r *http.Request) (T, error) {
