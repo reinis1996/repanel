@@ -67,13 +67,6 @@ server {
 // (the "nginx + Apache" mode); otherwise every request is proxied to Apache
 // (the "Apache only" mode, where Apache serves both static and PHP).
 var nginxProxyTemplate = template.Must(template.New("vhostproxy").Parse(`# Managed by RePanel — do not edit, changes will be overwritten.
-{{- define "ppass" -}}
-        proxy_pass http://127.0.0.1:{{.BackendPort}};
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-{{- end -}}
 server {
     listen 80;
     listen [::]:80;
@@ -110,15 +103,15 @@ server {
     }
 
     location ~ \.php$ {
-{{template "ppass" .}}
+{{.ProxyPass}}
     }
 
     location @backend {
-{{template "ppass" .}}
+{{.ProxyPass}}
     }
 {{- else}}
     location / {
-{{template "ppass" .}}
+{{.ProxyPass}}
     }
 {{- end}}
 }
@@ -135,6 +128,7 @@ type vhostData struct {
 	KeyPath      string
 	ServeStatic  bool
 	BackendPort  int
+	ProxyPass    string // pre-rendered proxy_pass block (nginx-apache stack)
 }
 
 // phpPoolTemplate gives every domain an isolated PHP-FPM pool running as the
@@ -164,6 +158,16 @@ func phpSocket(d models.Domain) string {
 	return fmt.Sprintf("/run/php/php%s-fpm-%s.sock", d.PHPVersion, poolName(d.Name))
 }
 
+// proxyPassBlock renders the indented proxy_pass directives (with no trailing
+// newline) that send a request to the Apache backend on the loopback port.
+func proxyPassBlock(backendPort int) string {
+	return fmt.Sprintf("        proxy_pass http://127.0.0.1:%d;\n"+
+		"        proxy_set_header Host $host;\n"+
+		"        proxy_set_header X-Real-IP $remote_addr;\n"+
+		"        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n"+
+		"        proxy_set_header X-Forwarded-Proto $scheme;", backendPort)
+}
+
 // vhostDataFor builds the template data shared by the nginx and apache writers.
 func vhostDataFor(d models.Domain, ssl bool, certPath, keyPath string, backendPort int, serveStatic bool) vhostData {
 	return vhostData{
@@ -177,6 +181,7 @@ func vhostDataFor(d models.Domain, ssl bool, certPath, keyPath string, backendPo
 		KeyPath:      keyPath,
 		ServeStatic:  serveStatic,
 		BackendPort:  backendPort,
+		ProxyPass:    proxyPassBlock(backendPort),
 	}
 }
 

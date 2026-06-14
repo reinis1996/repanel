@@ -78,6 +78,15 @@ func TestWriteVhostCombinedApacheMode(t *testing.T) {
 	if strings.Contains(nginxConf, "try_files $uri $uri/ @backend") {
 		t.Errorf("apache mode should proxy everything, not serve static:\n%s", nginxConf)
 	}
+	// The "server {" block must start on its own line — a previous bug let
+	// template trim markers fold it into the leading "#" comment, which nginx
+	// rejects with "listen directive not allowed here".
+	if !strings.Contains(nginxConf, "\nserver {\n    listen 80;") {
+		t.Errorf("server block not opened on its own line:\n%s", nginxConf)
+	}
+	if strings.Contains(nginxConf, "overwritten.server") {
+		t.Errorf("server block folded into the comment line:\n%s", nginxConf)
+	}
 	apacheConf := read(t, filepath.Join(apacheDir, "repanel.d", "example.com.conf"))
 	if !strings.Contains(apacheConf, "<VirtualHost 127.0.0.1:8081>") {
 		t.Errorf("apache backend should listen on the backend port, no TLS:\n%s", apacheConf)
