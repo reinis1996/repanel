@@ -159,6 +159,18 @@ type DKIMStatus struct {
 	SPFSuggest string `json:"spf_suggest"`
 }
 
+// WebmailStatus reports whether webmail (Roundcube at webmail.<domain>) is
+// enabled for a domain. Available is false server-wide when Roundcube is not
+// installed, in which case the UI offers no enable action.
+type WebmailStatus struct {
+	DomainID   int64  `json:"domain_id"`
+	Domain     string `json:"domain"`
+	Enabled    bool   `json:"enabled"`
+	Available  bool   `json:"available"`
+	URL        string `json:"url"`         // http://webmail.<domain>
+	DNSManaged bool   `json:"dns_managed"` // a webmail A record is published here
+}
+
 type MailAlias struct {
 	ID          int64  `json:"id"`
 	DomainID    int64  `json:"domain_id"`

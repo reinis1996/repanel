@@ -70,6 +70,10 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("POST /api/dkim/{id}", s.user(s.handleDKIMEnable))
 	mux.Handle("DELETE /api/dkim/{id}", s.user(s.handleDKIMDisable))
 
+	mux.Handle("GET /api/webmail", s.user(s.handleWebmailList))
+	mux.Handle("POST /api/webmail/{id}", s.user(s.handleWebmailEnable))
+	mux.Handle("DELETE /api/webmail/{id}", s.user(s.handleWebmailDisable))
+
 	mux.Handle("GET /api/databases", s.user(s.handleDBList))
 	mux.Handle("GET /api/database-engines", s.user(s.handleDBEngines))
 	mux.Handle("POST /api/databases", s.user(s.handleDBCreate))

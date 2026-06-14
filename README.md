@@ -9,6 +9,7 @@
 - **Websites & Domains** — per-domain nginx vhosts with isolated PHP-FPM pools (each site runs as its own system user), selectable PHP version, suspend/unsuspend
 - **DNS** — authoritative zones served by BIND with a full record editor (A, AAAA, CNAME, MX, TXT, NS, SRV, CAA) and sane default zone templates
 - **Mail** — virtual mailboxes and aliases on Postfix + Dovecot (IMAP/POP3/SMTP auth), per-mailbox quotas, one-click DKIM signing (OpenDKIM) with DMARC/SPF records published automatically into managed zones
+- **Webmail** — opt-in Roundcube webmail served at `webmail.<domain>`, enabled per domain from the Mail page (with the `webmail` DNS record published into managed zones)
 - **Databases** — MariaDB and (optional) PostgreSQL databases with a dedicated user per database, live size reporting
 - **File Manager** — browse, upload, download, edit, rename and delete inside a jailed web space
 - **FTP** — ProFTPD accounts jailed to a chosen directory
@@ -40,6 +41,14 @@ To install PostgreSQL alongside MariaDB, run the installer with `WITH_POSTGRES=1
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/main/scripts/install.sh | WITH_POSTGRES=1 sh
+```
+
+To install Roundcube webmail, run the installer with `WITH_WEBMAIL=1` (or
+`apt install roundcube` later — the panel detects it automatically and serves it
+at `webmail.<domain>` for opted-in domains):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/main/scripts/install.sh | WITH_WEBMAIL=1 sh
 ```
 
 ## Building from source
@@ -102,7 +111,7 @@ Design principles:
 - [x] Backups (scheduled, per-account, restore from UI)
 - [x] Disk usage statistics & per-account disk quotas
 - [x] Traffic accounting per account
-- [ ] Webmail (Roundcube one-click install)
+- [x] Webmail (Roundcube, served at webmail.&lt;domain&gt;)
 - [x] One-click apps (WordPress installer)
 - [x] DKIM/DMARC management (OpenDKIM signing + DNS records)
 - [ ] Apache as an alternative web server

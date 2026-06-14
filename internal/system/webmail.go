@@ -1,0 +1,125 @@
+package system
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"text/template"
+)
+
+// Webmail integration serves a shared Roundcube installation at
+// webmail.<domain> for every domain the operator opts in. Roundcube itself is
+// installed (and pointed at the local Dovecot/Postfix) by the installer; the
+// panel only generates a single nginx vhost listing the enabled hostnames and
+// rebuilds it from database state, the same regenerate-from-state model used
+// for mail maps and DKIM tables.
+
+// webmailRoots are the document roots Debian/Ubuntu's roundcube packages use,
+// most specific first. The first one that exists wins.
+var webmailRoots = []string{
+	"/var/lib/roundcube/public_html",
+	"/var/lib/roundcube",
+	"/usr/share/roundcube",
+}
+
+// WebmailRoot returns the Roundcube document root if it is installed, else "".
+func WebmailRoot() string {
+	for _, root := range webmailRoots {
+		if _, err := os.Stat(filepath.Join(root, "index.php")); err == nil {
+			return root
+		}
+	}
+	return ""
+}
+
+// HaveWebmail reports whether a Roundcube installation is present.
+func HaveWebmail() bool { return WebmailRoot() != "" }
+
+// DefaultPHPSocket returns the system PHP-FPM pool socket (the default www
+// pool, distinct from the per-domain pools the panel creates). Roundcube runs
+// in this shared pool as www-data.
+func DefaultPHPSocket() string {
+	versions := PHPVersions()
+	ver := versions[len(versions)-1]
+	return "/run/php/php" + ver + "-fpm.sock"
+}
+
+var webmailVhostTemplate = template.Must(template.New("webmail").Parse(`# Managed by RePanel — webmail (Roundcube). Regenerated from panel state.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{.ServerNames}};
+
+    root {{.Root}};
+    index index.php;
+
+    access_log /var/log/nginx/webmail.access.log;
+    error_log  /var/log/nginx/webmail.error.log;
+
+    client_max_body_size 64m;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # Roundcube internals that must never be served.
+    location ~ ^/(config|temp|logs|bin|SQL|installer)/ { deny all; }
+    location ~ /\.    { deny all; }
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_pass unix:{{.PHPSock}};
+    }
+}
+`))
+
+type webmailVhostData struct {
+	ServerNames string
+	Root        string
+	PHPSock     string
+}
+
+// RebuildWebmailVhost regenerates the single webmail vhost from the list of
+// enabled domains. With no domains it removes the vhost. nginx is reloaded.
+func RebuildWebmailVhost(nginxDir string, domains []string) error {
+	confPath := filepath.Join(nginxDir, "repanel.d", "webmail.conf")
+	if len(domains) == 0 {
+		os.Remove(confPath)
+		return reloadNginx()
+	}
+	root := WebmailRoot()
+	if root == "" {
+		// Roundcube not installed; leave no stale vhost behind.
+		os.Remove(confPath)
+		return reloadNginx()
+	}
+	conf, err := renderWebmailVhost(root, DefaultPHPSocket(), domains)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(confPath), 0o755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(confPath, []byte(conf), 0o644); err != nil {
+		return err
+	}
+	return reloadNginx()
+}
+
+// renderWebmailVhost renders the shared webmail server block. Hostnames are
+// derived as webmail.<domain> for each enabled domain.
+func renderWebmailVhost(root, phpSock string, domains []string) (string, error) {
+	names := make([]string, len(domains))
+	for i, d := range domains {
+		names[i] = "webmail." + d
+	}
+	var sb strings.Builder
+	err := webmailVhostTemplate.Execute(&sb, webmailVhostData{
+		ServerNames: strings.Join(names, " "),
+		Root:        root,
+		PHPSock:     phpSock,
+	})
+	return sb.String(), err
+}

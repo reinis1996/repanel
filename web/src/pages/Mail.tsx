@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Plus, KeyRound, Trash2, ShieldCheck, FileText } from 'lucide-react'
+import { Plus, KeyRound, Trash2, ShieldCheck, FileText, Mail, ExternalLink } from 'lucide-react'
 import { api, useFetch } from '../api'
-import type { Mailbox, MailAlias, Domain, DKIMStatus } from '../types'
+import type { Mailbox, MailAlias, Domain, DKIMStatus, WebmailStatus } from '../types'
 import {
   Btn, Card, PageHeader, Table, Td, Modal, Field, Input, Select,
   Spinner, ErrorBanner, Empty, Badge, toast,
@@ -16,6 +16,7 @@ export default function MailPage() {
   const { data, error, loading, reload } = useFetch<MailData>('/api/mail')
   const domains = useFetch<Domain[]>('/api/domains')
   const dkim = useFetch<DKIMStatus[]>('/api/dkim')
+  const webmail = useFetch<WebmailStatus[]>('/api/webmail')
 
   const [boxOpen, setBoxOpen] = useState(false)
   const [aliasOpen, setAliasOpen] = useState(false)
@@ -136,6 +137,33 @@ export default function MailPage() {
     }
   }
 
+  const enableWebmail = async (m: WebmailStatus) => {
+    try {
+      const res = await api.post<WebmailStatus>(`/api/webmail/${m.domain_id}`)
+      toast(
+        res.dns_managed
+          ? `Webmail enabled — ${res.url} (DNS record published)`
+          : `Webmail enabled — point ${res.url.replace('http://', '')} at this server`,
+      )
+      webmail.reload()
+    } catch (err) {
+      toast((err as Error).message, 'err')
+    }
+  }
+
+  const disableWebmail = async (m: WebmailStatus) => {
+    if (!confirm(`Disable webmail for ${m.domain}?`)) return
+    try {
+      await api.del(`/api/webmail/${m.domain_id}`)
+      toast(`Webmail disabled for ${m.domain}`)
+      webmail.reload()
+    } catch (err) {
+      toast((err as Error).message, 'err')
+    }
+  }
+
+  const webmailInstalled = (webmail.data ?? []).some((m) => m.available)
+
   if (loading) return <Spinner />
 
   return (
@@ -231,6 +259,58 @@ export default function MailPage() {
                     ) : (
                       <Btn size="sm" variant="secondary" onClick={() => enableDKIM(d)}>
                         <ShieldCheck size={13} /> Enable DKIM
+                      </Btn>
+                    )}
+                  </Td>
+                </tr>
+              ))}
+            </Table>
+          )}
+        </Card>
+
+        <Card title="Webmail (Roundcube)">
+          {!(webmail.data ?? []).length ? (
+            <Empty title="No domains" hint="Add a domain to offer webmail at webmail.<domain>" />
+          ) : !webmailInstalled ? (
+            <Empty
+              title="Webmail not installed"
+              hint="Install Roundcube on the server (re-run the installer with WITH_WEBMAIL=1) to offer webmail."
+            />
+          ) : (
+            <Table head={['Domain', 'Webmail', 'DNS', '']}>
+              {(webmail.data ?? []).map((m) => (
+                <tr key={m.domain_id} className="hover:bg-slate-50/60">
+                  <Td className="font-medium">{m.domain}</Td>
+                  <Td>
+                    {m.enabled ? (
+                      <a
+                        href={m.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-brand-600 hover:underline"
+                      >
+                        webmail.{m.domain} <ExternalLink size={12} />
+                      </a>
+                    ) : (
+                      <Badge color="gray">off</Badge>
+                    )}
+                  </Td>
+                  <Td>
+                    {m.enabled &&
+                      (m.dns_managed ? (
+                        <span className="text-xs text-slate-500">auto-published</span>
+                      ) : (
+                        <span className="text-xs text-amber-600">point DNS here</span>
+                      ))}
+                  </Td>
+                  <Td className="text-right whitespace-nowrap">
+                    {m.enabled ? (
+                      <Btn size="sm" variant="danger" onClick={() => disableWebmail(m)}>
+                        Disable
+                      </Btn>
+                    ) : (
+                      <Btn size="sm" variant="secondary" onClick={() => enableWebmail(m)}>
+                        <Mail size={13} /> Enable
                       </Btn>
                     )}
                   </Td>

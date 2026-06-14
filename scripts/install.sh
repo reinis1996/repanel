@@ -265,6 +265,31 @@ RequireValidShell off
 EOF
 systemctl restart proftpd || true
 
+# ---- optional webmail (Roundcube) ------------------------------------------
+# Webmail is not part of the default stack. Set WITH_WEBMAIL=1 to install
+# Roundcube here, or `apt install roundcube` yourself later — the panel detects
+# it automatically and serves it at webmail.<domain> for opted-in domains.
+if [ "${WITH_WEBMAIL:-0}" = 1 ]; then
+  say "Installing Roundcube webmail (WITH_WEBMAIL=1)"
+  # Preseed dbconfig to a self-contained sqlite store so the install needs no
+  # database credentials and stays non-interactive.
+  echo "roundcube-core roundcube/dbconfig-install boolean true" | debconf-set-selections
+  echo "roundcube-core roundcube/database-type select sqlite3"  | debconf-set-selections
+  if apt-get install -y -qq roundcube roundcube-core roundcube-sqlite3 >/dev/null 2>&1; then
+    # Point Roundcube at the local Dovecot/Postfix.
+    RC_CONF=/etc/roundcube/config.inc.php
+    if [ -f "$RC_CONF" ]; then
+      sed -i "s#^\$config\['imap_host'\].*#\$config['imap_host'] = 'localhost:143';#" "$RC_CONF" 2>/dev/null || true
+      sed -i "s#^\$config\['smtp_host'\].*#\$config['smtp_host'] = 'localhost:587';#" "$RC_CONF" 2>/dev/null || true
+      grep -q "imap_host" "$RC_CONF" || echo "\$config['imap_host'] = 'localhost:143';" >> "$RC_CONF"
+      grep -q "smtp_host" "$RC_CONF" || echo "\$config['smtp_host'] = 'localhost:587';" >> "$RC_CONF"
+    fi
+    say "Roundcube installed — enable webmail per domain from the Mail page"
+  else
+    say "WARNING: Roundcube install failed — webmail will be unavailable"
+  fi
+fi
+
 # ---- systemd unit ----------------------------------------------------------
 say "Installing systemd service"
 cat > /etc/systemd/system/repanel.service <<EOF

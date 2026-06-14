@@ -108,6 +108,15 @@ export interface DKIMStatus {
   spf_suggest: string
 }
 
+export interface WebmailStatus {
+  domain_id: number
+  domain: string
+  enabled: boolean
+  available: boolean
+  url: string
+  dns_managed: boolean
+}
+
 export interface Mailbox {
   id: number
   domain_id: number
