@@ -59,8 +59,15 @@ export interface Domain {
   php_version: string
   ssl: boolean
   suspended: boolean
+  web_mode: string // nginx | apache | nginx-apache
   created_at: string
   owner?: string
+}
+
+export interface WebServerInfo {
+  stack: string // nginx | apache | nginx-apache
+  modes: string[] // selectable per-domain modes
+  default: string // default mode for new domains
 }
 
 export interface App {

@@ -121,5 +121,5 @@ func (s *Server) rebuildWebmail() error {
 		}
 	}
 	rows.Close()
-	return system.RebuildWebmailVhost(s.Cfg.NginxDir, domains)
+	return s.webServer().RebuildWebmail(domains)
 }

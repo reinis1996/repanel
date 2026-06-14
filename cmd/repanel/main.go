@@ -50,7 +50,8 @@ func main() {
 			srv.CollectTraffic()
 			if time.Since(lastRenew) > 24*time.Hour {
 				lastRenew = time.Now()
-				if err := system.RenewCertificates(); err != nil {
+				ws := system.NewWebServer(cfg.WebServer, cfg.NginxDir, cfg.ApacheDir, cfg.ApachePort)
+				if err := system.RenewCertificates(ws); err != nil {
 					log.Printf("certificate renewal: %v", err)
 				}
 			}

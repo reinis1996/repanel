@@ -192,6 +192,9 @@ CREATE TABLE IF NOT EXISTS api_tokens (
 	db.Exec(`ALTER TABLE users ADD COLUMN disk_quota_mb INTEGER NOT NULL DEFAULT 0`)
 	db.Exec(`ALTER TABLE db_entries ADD COLUMN engine TEXT NOT NULL DEFAULT 'mysql'`)
 	db.Exec(`ALTER TABLE domains ADD COLUMN webmail INTEGER NOT NULL DEFAULT 0`)
+	// Per-domain web server mode (nginx | apache | nginx-apache); empty means
+	// "the stack default", resolved at vhost-generation time.
+	db.Exec(`ALTER TABLE domains ADD COLUMN web_mode TEXT NOT NULL DEFAULT ''`)
 	return nil
 }
 

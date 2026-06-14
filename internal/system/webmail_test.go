@@ -40,7 +40,8 @@ func TestRebuildWebmailVhostRemovesWhenEmpty(t *testing.T) {
 	if err := os.WriteFile(confPath, []byte("stale"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := RebuildWebmailVhost(dir, nil); err != nil {
+	ws := NewWebServer("nginx", dir, dir, 8080)
+	if err := ws.RebuildWebmail(nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(confPath); !os.IsNotExist(err) {

@@ -12,6 +12,7 @@ import (
 	"github.com/reinis1996/repanel/internal/config"
 	"github.com/reinis1996/repanel/internal/database"
 	"github.com/reinis1996/repanel/internal/models"
+	"github.com/reinis1996/repanel/internal/system"
 )
 
 type Server struct {
@@ -28,6 +29,11 @@ func New(cfg *config.Config, db *database.DB, version string) *Server {
 		Auth:    &auth.Manager{DB: db, SessionHours: cfg.SessionHours},
 		Version: version,
 	}
+}
+
+// webServer builds the web server orchestrator for the configured stack.
+func (s *Server) webServer() *system.WebServer {
+	return system.NewWebServer(s.Cfg.WebServer, s.Cfg.NginxDir, s.Cfg.ApacheDir, s.Cfg.ApachePort)
 }
 
 // Routes registers every API endpoint on a fresh mux.
@@ -48,6 +54,8 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("DELETE /api/domains/{id}", s.user(s.handleDomainDelete))
 	mux.Handle("POST /api/domains/{id}/suspend", s.user(s.handleDomainSuspend))
 	mux.Handle("POST /api/domains/{id}/php", s.user(s.handleDomainPHP))
+	mux.Handle("POST /api/domains/{id}/webserver", s.user(s.handleDomainWebMode))
+	mux.Handle("GET /api/webserver", s.user(s.handleWebServerInfo))
 	mux.Handle("GET /api/php-versions", s.user(s.handlePHPVersions))
 	mux.Handle("GET /api/apps", s.user(s.handleAppList))
 	mux.Handle("POST /api/domains/{id}/apps", s.user(s.handleAppInstall))

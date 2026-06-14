@@ -114,14 +114,16 @@ func CertExpiry(certPath string) (time.Time, error) {
 	return cert.NotAfter, nil
 }
 
-// RenewCertificates runs certbot renew; safe to call from a daily ticker.
-func RenewCertificates() error {
+// RenewCertificates runs certbot renew; safe to call from a daily ticker. On
+// success it reloads whichever web servers the stack runs so renewed
+// certificates take effect.
+func RenewCertificates(ws *WebServer) error {
 	if !have("certbot") {
 		return nil
 	}
 	_, err := run("certbot", "renew", "--quiet")
-	if err == nil {
-		ReloadService("nginx")
+	if err == nil && ws != nil {
+		ws.reloadAll()
 	}
 	return err
 }

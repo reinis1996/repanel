@@ -15,6 +15,17 @@ DATA_DIR=/var/lib/repanel
 BIN=/usr/local/bin/repanel
 CLI_BIN=/usr/local/bin/repctl
 
+# Web server stack: nginx (default), apache, or nginx-apache (nginx fronts
+# :80/:443 and reverse-proxies to Apache on APACHE_PORT). In the nginx-apache
+# stack each website chooses nginx-only, Apache-only or nginx+Apache from the
+# panel.
+WEB_SERVER="${WEB_SERVER:-nginx}"
+APACHE_PORT="${APACHE_PORT:-8080}"
+case "$WEB_SERVER" in
+  nginx|apache|nginx-apache) ;;
+  *) printf 'ERROR: WEB_SERVER must be nginx, apache or nginx-apache (got %s)\n' "$WEB_SERVER" >&2; exit 1 ;;
+esac
+
 say()  { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 fail() { printf '\033[1;31mERROR:\033[0m %s\n' "$*" >&2; exit 1; }
 
@@ -31,11 +42,20 @@ export DEBIAN_FRONTEND=noninteractive
 say "Installing packages (this can take a few minutes)..."
 apt-get update -qq
 apt-get install -y -qq \
-  nginx php-fpm php-mysql php-curl php-gd php-mbstring php-xml php-zip \
+  php-fpm php-mysql php-curl php-gd php-mbstring php-xml php-zip \
   mariadb-server bind9 bind9utils \
   postfix postfix-pcre dovecot-imapd dovecot-pop3d dovecot-lmtpd \
   opendkim opendkim-tools \
   proftpd-basic certbot ufw fail2ban curl ca-certificates >/dev/null
+
+# Web server packages depend on the chosen stack.
+case "$WEB_SERVER" in
+  nginx)        WEB_PKGS="nginx" ;;
+  apache)       WEB_PKGS="apache2" ;;
+  nginx-apache) WEB_PKGS="nginx apache2" ;;
+esac
+say "Installing web server: $WEB_SERVER"
+apt-get install -y -qq $WEB_PKGS >/dev/null
 
 PHP_VER="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null || echo 8.2)"
 say "Detected PHP $PHP_VER"
@@ -99,19 +119,65 @@ LISTEN=:$PANEL_PORT
 DATA_DIR=$DATA_DIR
 WEB_ROOT=/var/www
 NGINX_DIR=/etc/nginx
+APACHE_DIR=/etc/apache2
+WEB_SERVER=$WEB_SERVER
+APACHE_PORT=$APACHE_PORT
 BIND_DIR=/etc/bind
 MAIL_DIR=$CONF_DIR/mail
 SESSION_HOURS=24
 EOF
 
-# ---- nginx -----------------------------------------------------------------
-say "Configuring nginx"
-mkdir -p /etc/nginx/repanel.d
-cat > /etc/nginx/conf.d/zz-repanel.conf <<'EOF'
+# ---- web server (nginx / apache, per WEB_SERVER) ---------------------------
+# nginx is the front for the nginx and nginx-apache stacks; Apache fronts the
+# apache stack and runs as a plain-HTTP backend in the nginx-apache stack. The
+# panel writes per-domain vhosts into <server>/repanel.d and reloads from there.
+configure_nginx() {
+  say "Configuring nginx"
+  mkdir -p /etc/nginx/repanel.d
+  cat > /etc/nginx/conf.d/zz-repanel.conf <<'EOF'
 # Managed by RePanel — loads all per-domain vhosts.
 include /etc/nginx/repanel.d/*.conf;
 EOF
-nginx -t >/dev/null && systemctl reload nginx
+  nginx -t >/dev/null 2>&1 && systemctl enable --now nginx >/dev/null 2>&1
+  systemctl reload nginx 2>/dev/null || true
+}
+
+configure_apache() {
+  say "Configuring Apache"
+  mkdir -p /etc/apache2/repanel.d
+  # Load per-domain vhosts.
+  grep -q 'repanel.d' /etc/apache2/apache2.conf 2>/dev/null || \
+    echo 'IncludeOptional /etc/apache2/repanel.d/*.conf' >> /etc/apache2/apache2.conf
+  # PHP runs through the per-domain FPM pools via mod_proxy_fcgi.
+  a2enmod proxy proxy_fcgi rewrite setenvif headers remoteip >/dev/null 2>&1 || true
+  # The stock catch-all site would shadow our vhosts.
+  a2dissite 000-default default-ssl >/dev/null 2>&1 || true
+}
+
+case "$WEB_SERVER" in
+  nginx)
+    configure_nginx
+    ;;
+  apache)
+    configure_apache
+    a2enmod ssl >/dev/null 2>&1 || true
+    # Apache owns :80/:443 directly; make sure nothing else is bound there.
+    systemctl disable --now nginx >/dev/null 2>&1 || true
+    apache2ctl configtest >/dev/null 2>&1 && systemctl enable --now apache2 >/dev/null 2>&1
+    systemctl reload apache2 2>/dev/null || true
+    ;;
+  nginx-apache)
+    configure_nginx
+    configure_apache
+    # Apache listens only on the loopback backend port; nginx terminates TLS.
+    cat > /etc/apache2/ports.conf <<EOF
+# Managed by RePanel — Apache runs as a backend behind nginx.
+Listen 127.0.0.1:$APACHE_PORT
+EOF
+    apache2ctl configtest >/dev/null 2>&1 && systemctl enable --now apache2 >/dev/null 2>&1
+    systemctl reload apache2 2>/dev/null || true
+    ;;
+esac
 
 # ---- BIND ------------------------------------------------------------------
 say "Configuring BIND"

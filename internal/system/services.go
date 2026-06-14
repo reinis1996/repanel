@@ -11,6 +11,7 @@ import (
 // mirroring the service list of Plesk / DirectAdmin.
 var ManagedServices = []models.ServiceStatus{
 	{Name: "nginx", DisplayName: "Web Server (nginx)", Description: "Serves customer websites"},
+	{Name: "apache2", DisplayName: "Web Server (Apache)", Description: "Alternative/backend web server"},
 	{Name: "php8.3-fpm", DisplayName: "PHP-FPM 8.3", Description: "PHP application server"},
 	{Name: "mariadb", DisplayName: "Database (MariaDB)", Description: "MySQL-compatible database server"},
 	{Name: "postgresql", DisplayName: "Database (PostgreSQL)", Description: "PostgreSQL database server"},

@@ -41,7 +41,8 @@
       "Bash(gofmt -w internal/system/postgres_test.go internal/api/databases_test.go)",
       "Bash(gofmt -w internal/system/wordpress_test.go internal/system/wordpress.go internal/api/apps.go internal/api/apps_test.go)",
       "Bash(gofmt -w internal/models/models.go internal/api/dkim.go internal/system/dkim.go)",
-      "Bash(gofmt -w internal/system/dkim_test.go)"
+      "Bash(gofmt -w internal/system/dkim_test.go)",
+      "PowerShell(go test ./internal/system/ 2>&1)"
     ]
   }
 }

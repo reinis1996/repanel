@@ -94,9 +94,19 @@ type Domain struct {
 	PHPVersion   string    `json:"php_version"`
 	SSL          bool      `json:"ssl"`
 	Suspended    bool      `json:"suspended"`
+	WebMode      string    `json:"web_mode"` // nginx | apache | nginx-apache
 	CreatedAt    time.Time `json:"created_at"`
 	// Joined fields
 	Owner string `json:"owner,omitempty"`
+}
+
+// WebServerInfo describes the server-wide web server stack and the per-domain
+// modes the operator may choose from. When only one mode is offered the stack
+// is single-server (nginx-only or apache-only) and the UI hides the selector.
+type WebServerInfo struct {
+	Stack   string   `json:"stack"`   // nginx | apache | nginx-apache
+	Modes   []string `json:"modes"`   // selectable per-domain modes
+	Default string   `json:"default"` // default mode for new domains
 }
 
 // App is a one-click application (e.g. WordPress) installed into a domain.

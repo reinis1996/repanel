@@ -14,8 +14,11 @@ type Config struct {
 	DataDir      string // sqlite db, acme state, generated maps
 	WebRoot      string // base dir for customer document roots
 	NginxDir     string // nginx configuration directory
+	ApacheDir    string // apache2 configuration directory
 	BindDir      string // bind9 zone file directory
 	MailDir      string // generated postfix/dovecot maps
+	WebServer    string // web server stack: nginx | apache | nginx-apache
+	ApachePort   int    // apache backend port (nginx-apache stack)
 	TLSCert      string // optional TLS cert for the panel itself
 	TLSKey       string
 	SessionHours int
@@ -28,8 +31,11 @@ func Default() *Config {
 		DataDir:      "/var/lib/repanel",
 		WebRoot:      "/var/www",
 		NginxDir:     "/etc/nginx",
+		ApacheDir:    "/etc/apache2",
 		BindDir:      "/etc/bind",
 		MailDir:      "/etc/repanel/mail",
+		WebServer:    "nginx",
+		ApachePort:   8080,
 		SessionHours: 24,
 	}
 }
@@ -67,6 +73,17 @@ func Load(path string) (*Config, error) {
 			cfg.WebRoot = val
 		case "NGINX_DIR":
 			cfg.NginxDir = val
+		case "APACHE_DIR":
+			cfg.ApacheDir = val
+		case "WEB_SERVER":
+			switch val {
+			case "nginx", "apache", "nginx-apache":
+				cfg.WebServer = val
+			}
+		case "APACHE_PORT":
+			if n, err := strconv.Atoi(val); err == nil && n > 0 {
+				cfg.ApachePort = n
+			}
 		case "BIND_DIR":
 			cfg.BindDir = val
 		case "MAIL_DIR":

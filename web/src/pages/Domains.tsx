@@ -1,12 +1,19 @@
 import { useEffect, useState } from 'react'
 import { Plus, Lock, LockOpen, Package, Loader2, ExternalLink, Trash2 } from 'lucide-react'
 import { api, useFetch, formatDate } from '../api'
-import type { Domain, User, App } from '../types'
+import type { Domain, User, App, WebServerInfo } from '../types'
 import { useAuth } from '../App'
 import {
   Btn, Card, PageHeader, Table, Td, Modal, Field, Input, Select,
   Spinner, ErrorBanner, Empty, Badge, toast,
 } from '../components/ui'
+
+// Human-friendly labels for the per-domain web server modes.
+const WEB_MODE_LABELS: Record<string, string> = {
+  nginx: 'nginx',
+  apache: 'Apache',
+  'nginx-apache': 'nginx → Apache',
+}
 
 export default function Domains() {
   const { user } = useAuth()
@@ -15,11 +22,15 @@ export default function Domains() {
   const phpVersions = useFetch<string[]>('/api/php-versions')
   const usersList = useFetch<User[]>(isAdminish ? '/api/users' : '/api/me')
   const apps = useFetch<App[]>('/api/apps')
+  const webserver = useFetch<WebServerInfo>('/api/webserver')
   const appByDomain = new Map((apps.data ?? []).map((a) => [a.domain_id, a]))
+  const webModes = webserver.data?.modes ?? []
+  const showWebMode = webModes.length > 1
 
   const [addOpen, setAddOpen] = useState(false)
   const [name, setName] = useState('')
   const [php, setPhp] = useState('')
+  const [webMode, setWebMode] = useState('')
   const [owner, setOwner] = useState(0)
   const [createDNS, setCreateDNS] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -46,12 +57,14 @@ export default function Domains() {
       await api.post('/api/domains', {
         name,
         php_version: php || undefined,
+        web_mode: webMode || undefined,
         user_id: owner || undefined,
         create_dns: createDNS,
       })
       toast(`Domain ${name} created`)
       setAddOpen(false)
       setName('')
+      setWebMode('')
       reload()
     } catch (err) {
       toast((err as Error).message, 'err')
@@ -85,6 +98,16 @@ export default function Domains() {
     try {
       await api.post(`/api/domains/${d.id}/php`, { php_version: version })
       toast(`${d.name} switched to PHP ${version}`)
+      reload()
+    } catch (err) {
+      toast((err as Error).message, 'err')
+    }
+  }
+
+  const changeWebMode = async (d: Domain, mode: string) => {
+    try {
+      await api.post(`/api/domains/${d.id}/webserver`, { mode })
+      toast(`${d.name} now served by ${WEB_MODE_LABELS[mode] ?? mode}`)
       reload()
     } catch (err) {
       toast((err as Error).message, 'err')
@@ -133,7 +156,7 @@ export default function Domains() {
     <div>
       <PageHeader
         title="Websites & Domains"
-        subtitle="Each domain gets an nginx vhost, an isolated PHP-FPM pool and its own document root"
+        subtitle="Each domain gets its own vhost, an isolated PHP-FPM pool and its own document root"
         actions={
           <Btn onClick={() => setAddOpen(true)}>
             <Plus size={16} /> Add Domain
@@ -145,7 +168,18 @@ export default function Domains() {
         {!data?.length ? (
           <Empty title="No domains yet" hint="Add your first domain to start hosting" />
         ) : (
-          <Table head={['Domain', 'Owner', 'PHP', 'SSL', 'Application', 'Status', '']}>
+          <Table
+            head={[
+              'Domain',
+              'Owner',
+              'PHP',
+              ...(showWebMode ? ['Web'] : []),
+              'SSL',
+              'Application',
+              'Status',
+              '',
+            ]}
+          >
             {data.map((d) => (
               <tr key={d.id} className="hover:bg-slate-50/60">
                 <Td>
@@ -173,6 +207,21 @@ export default function Domains() {
                     ))}
                   </select>
                 </Td>
+                {showWebMode && (
+                  <Td>
+                    <select
+                      className="text-sm border border-slate-200 rounded px-1.5 py-0.5 bg-white"
+                      value={d.web_mode}
+                      onChange={(e) => changeWebMode(d, e.target.value)}
+                    >
+                      {webModes.map((m) => (
+                        <option key={m} value={m}>
+                          {WEB_MODE_LABELS[m] ?? m}
+                        </option>
+                      ))}
+                    </select>
+                  </Td>
+                )}
                 <Td>
                   {d.ssl ? (
                     <span className="inline-flex items-center gap-1 text-emerald-600 text-sm">
@@ -223,6 +272,18 @@ export default function Domains() {
               ))}
             </Select>
           </Field>
+          {showWebMode && (
+            <Field label="Web server" hint="nginx serves directly, or front Apache via nginx">
+              <Select value={webMode} onChange={(e) => setWebMode(e.target.value)}>
+                <option value="">Default ({WEB_MODE_LABELS[webserver.data?.default ?? ''] ?? 'nginx'})</option>
+                {webModes.map((m) => (
+                  <option key={m} value={m}>
+                    {WEB_MODE_LABELS[m] ?? m}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
           {isAdminish && Array.isArray(usersList.data) && (
             <Field label="Owner">
               <Select value={owner} onChange={(e) => setOwner(Number(e.target.value))}>

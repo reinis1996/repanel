@@ -6,7 +6,7 @@
 
 ## Features
 
-- **Websites & Domains** — per-domain nginx vhosts with isolated PHP-FPM pools (each site runs as its own system user), selectable PHP version, suspend/unsuspend
+- **Websites & Domains** — per-domain vhosts with isolated PHP-FPM pools (each site runs as its own system user), selectable PHP version, suspend/unsuspend, and a choice of web server — nginx, Apache, or nginx in front of Apache — per website
 - **DNS** — authoritative zones served by BIND with a full record editor (A, AAAA, CNAME, MX, TXT, NS, SRV, CAA) and sane default zone templates; optional secondary DNS servers receive zone transfers (AXFR) and change notifications automatically
 - **Mail** — virtual mailboxes and aliases on Postfix + Dovecot (IMAP/POP3/SMTP auth), per-mailbox quotas, one-click DKIM signing (OpenDKIM) with DMARC/SPF records published automatically into managed zones
 - **Webmail** — opt-in Roundcube webmail served at `webmail.<domain>`, enabled per domain from the Mail page (with the `webmail` DNS record published into managed zones)
@@ -35,6 +35,27 @@ curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/main/scripts/ins
 Then open `https://<server-ip>:8443` and create the administrator account. The installer sets up nginx, PHP-FPM, MariaDB, BIND, Postfix, Dovecot, ProFTPD, certbot, ufw and fail2ban, and wires them all to the panel. It also installs the `repctl` command-line client.
 
 > The panel serves its UI over HTTPS with a self-signed certificate by default; point `TLS_CERT` / `TLS_KEY` in `/etc/repanel/repanel.conf` at a real certificate to remove the browser warning.
+
+### Choosing a web server
+
+By default RePanel installs **nginx** and serves every site from it. To use
+**Apache** instead, or to run **nginx in front of Apache** (so each website can
+be set to nginx-only, Apache-only, or nginx+Apache from the panel), set
+`WEB_SERVER` when installing:
+
+```sh
+# Apache only
+curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/main/scripts/install.sh | WEB_SERVER=apache sh
+
+# nginx fronting Apache — per-site choice in the panel (Apache backend on :8080)
+curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/main/scripts/install.sh | WEB_SERVER=nginx-apache sh
+```
+
+In the `nginx-apache` stack the **Web** column on the Websites page lets you
+switch each domain between *nginx* (served directly via PHP-FPM), *Apache*
+(nginx reverse-proxies everything to Apache) and *nginx → Apache* (nginx serves
+static files and proxies PHP to Apache). PHP always runs in the site's isolated
+FPM pool, so behaviour is identical whichever server is in front.
 
 To install PostgreSQL alongside MariaDB, run the installer with `WITH_POSTGRES=1`
 (or `apt install postgresql` later — the panel detects it automatically):
@@ -101,6 +122,9 @@ Design principles:
 | `DATA_DIR` | `/var/lib/repanel` | SQLite db, issued certificates |
 | `WEB_ROOT` | `/var/www` | base directory for customer sites |
 | `NGINX_DIR` | `/etc/nginx` | nginx config root |
+| `APACHE_DIR` | `/etc/apache2` | Apache config root |
+| `WEB_SERVER` | `nginx` | web server stack: `nginx`, `apache` or `nginx-apache` |
+| `APACHE_PORT` | `8080` | Apache backend port (nginx-apache stack) |
 | `BIND_DIR` | `/etc/bind` | BIND config root |
 | `MAIL_DIR` | `/etc/repanel/mail` | generated postfix/dovecot maps |
 | `TLS_CERT` / `TLS_KEY` | *(self-signed)* | panel UI certificate |
@@ -114,7 +138,7 @@ Design principles:
 - [x] Webmail (Roundcube, served at webmail.&lt;domain&gt;)
 - [x] One-click apps (WordPress installer)
 - [x] DKIM/DMARC management (OpenDKIM signing + DNS records)
-- [ ] Apache as an alternative web server
+- [x] Apache as an alternative web server (per-site nginx / Apache / nginx+Apache)
 - [x] PostgreSQL support (alongside MariaDB)
 - [x] Secondary / slave DNS (zone transfers + NOTIFY to secondary nameservers)
 - [x] API tokens (personal access tokens for the REST API)

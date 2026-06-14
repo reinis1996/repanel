@@ -36,11 +36,12 @@ func (s *Server) CollectTraffic() {
 	}
 	rows.Close()
 
+	logDir := s.webServer().AccessLogDir()
 	for _, d := range domains {
 		var oldSize int64
 		s.DB.QueryRow(`SELECT log_size FROM traffic_state WHERE domain_id = ?`, d.id).Scan(&oldSize)
 
-		logPath := filepath.Join(system.NginxLogDir, d.name+".access.log")
+		logPath := filepath.Join(logDir, d.name+".access.log")
 		res, err := system.CollectAccessLog(logPath, oldSize)
 		if err != nil {
 			log.Printf("traffic: parse %s: %v", logPath, err)
