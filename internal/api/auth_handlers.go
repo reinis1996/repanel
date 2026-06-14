@@ -138,14 +138,15 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request, u *mode
 		s.DB.QueryRow(`SELECT COUNT(*) FROM users WHERE owner_id = ?`, u.ID).Scan(&userCount)
 	}
 	resp := map[string]any{
-		"system":    system.Info(s.Version),
 		"domains":   count("domains"),
 		"mailboxes": s.countMailboxes(u),
 		"databases": count("db_entries"),
 		"ftp":       count("ftp_accounts"),
 		"users":     userCount,
 	}
+	// Host-level health and service status are only exposed to admins.
 	if u.Role == models.RoleAdmin {
+		resp["system"] = system.Info(s.Version)
 		resp["services"] = system.ServiceList()
 	}
 	s.json(w, resp)

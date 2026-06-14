@@ -5,7 +5,7 @@ import { Card, PageHeader, Spinner, ErrorBanner, Meter, Badge } from '../compone
 import { useAuth } from '../App'
 
 interface DashboardData {
-  system: SystemInfo
+  system?: SystemInfo
   domains: number
   mailboxes: number
   databases: number
@@ -16,6 +16,7 @@ interface DashboardData {
 
 export default function Dashboard() {
   const { user } = useAuth()
+  const isAdmin = user!.role === 'admin'
   const { data, error, loading } = useFetch<DashboardData>('/api/dashboard')
   const usage = useFetch<Usage[]>('/api/usage')
   const myUsage = (usage.data ?? []).find((x) => x.user_id === user!.id)
@@ -35,7 +36,7 @@ export default function Dashboard() {
 
   return (
     <div>
-      <PageHeader title="Dashboard" subtitle={`${sys.hostname} — ${sys.os}`} />
+      <PageHeader title="Dashboard" subtitle={sys ? `${sys.hostname} — ${sys.os}` : 'Overview of your hosting account'} />
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
         {stats.map(({ label, value, icon: Icon }) => (
@@ -52,19 +53,21 @@ export default function Dashboard() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
-        <Card title="Server health">
-          <div className="space-y-4">
-            <Meter label={`CPU (${sys.cpu_count} cores)`} used={sys.cpu_usage_percent} total={100} unit="%" />
-            <Meter label="Memory" used={sys.mem_used_mb / 1024} total={sys.mem_total_mb / 1024 || 1} unit="GB" />
-            <Meter label="Disk /" used={sys.disk_used_gb} total={sys.disk_total_gb || 1} unit="GB" />
-            <div className="grid grid-cols-2 gap-3 text-sm pt-2 border-t border-slate-100">
-              <Info label="Uptime" value={sys.uptime_seconds ? formatUptime(sys.uptime_seconds) : '—'} />
-              <Info label="Load average" value={sys.load_avg || '—'} />
-              <Info label="Kernel" value={sys.kernel || '—'} />
-              <Info label="Panel version" value={sys.panel_version} />
+        {isAdmin && sys && (
+          <Card title="Server health">
+            <div className="space-y-4">
+              <Meter label={`CPU (${sys.cpu_count} cores)`} used={sys.cpu_usage_percent} total={100} unit="%" />
+              <Meter label="Memory" used={sys.mem_used_mb / 1024} total={sys.mem_total_mb / 1024 || 1} unit="GB" />
+              <Meter label="Disk /" used={sys.disk_used_gb} total={sys.disk_total_gb || 1} unit="GB" />
+              <div className="grid grid-cols-2 gap-3 text-sm pt-2 border-t border-slate-100">
+                <Info label="Uptime" value={sys.uptime_seconds ? formatUptime(sys.uptime_seconds) : '—'} />
+                <Info label="Load average" value={sys.load_avg || '—'} />
+                <Info label="Kernel" value={sys.kernel || '—'} />
+                <Info label="Panel version" value={sys.panel_version} />
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        )}
 
         {myUsage && (
           <Card title="My disk usage">
@@ -84,7 +87,7 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {data.services && (
+        {isAdmin && data.services && (
           <Card title="Services">
             <div className="divide-y divide-slate-100 -my-2">
               {data.services.map((s) => (
