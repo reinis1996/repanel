@@ -226,6 +226,15 @@ type Certificate struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// PHPVersionInfo reports a PHP version's state for the admin PHP manager:
+// whether it is installed, currently being installed, or failed to install.
+type PHPVersionInfo struct {
+	Version    string `json:"version"`
+	Installed  bool   `json:"installed"`
+	Installing bool   `json:"installing"`
+	Error      string `json:"error,omitempty"`
+}
+
 type ServiceStatus struct {
 	Name        string `json:"name"` // systemd unit name
 	DisplayName string `json:"display_name"`

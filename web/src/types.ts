@@ -175,6 +175,13 @@ export interface Certificate {
   created_at: string
 }
 
+export interface PHPVersionInfo {
+  version: string
+  installed: boolean
+  installing: boolean
+  error?: string
+}
+
 export interface ServiceStatus {
   name: string
   display_name: string

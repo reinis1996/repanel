@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/reinis1996/repanel/internal/auth"
 	"github.com/reinis1996/repanel/internal/config"
@@ -20,14 +21,20 @@ type Server struct {
 	DB      *database.DB
 	Auth    *auth.Manager
 	Version string
+
+	// phpInstalls tracks in-flight / failed PHP version installs by version,
+	// so the admin PHP manager can poll progress (apt runs in the background).
+	phpMu       sync.Mutex
+	phpInstalls map[string]*phpInstall
 }
 
 func New(cfg *config.Config, db *database.DB, version string) *Server {
 	return &Server{
-		Cfg:     cfg,
-		DB:      db,
-		Auth:    &auth.Manager{DB: db, SessionHours: cfg.SessionHours},
-		Version: version,
+		Cfg:         cfg,
+		DB:          db,
+		Auth:        &auth.Manager{DB: db, SessionHours: cfg.SessionHours},
+		Version:     version,
+		phpInstalls: map[string]*phpInstall{},
 	}
 }
 
@@ -57,6 +64,8 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("POST /api/domains/{id}/webserver", s.user(s.handleDomainWebMode))
 	mux.Handle("GET /api/webserver", s.user(s.handleWebServerInfo))
 	mux.Handle("GET /api/php-versions", s.user(s.handlePHPVersions))
+	mux.Handle("GET /api/php", s.admin(s.handlePHPList, false))
+	mux.Handle("POST /api/php/install", s.admin(s.handlePHPInstall, false))
 	mux.Handle("GET /api/apps", s.user(s.handleAppList))
 	mux.Handle("POST /api/domains/{id}/apps", s.user(s.handleAppInstall))
 	mux.Handle("DELETE /api/apps/{id}", s.user(s.handleAppDelete))

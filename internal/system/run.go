@@ -10,18 +10,31 @@ package system
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
 	"time"
 )
 
+const defaultTimeout = 2 * time.Minute
+
 // Linux reports whether we are running on a real target host.
 func Linux() bool { return runtime.GOOS == "linux" }
 
-// run executes a command with a timeout and returns combined output.
+// run executes a command with the default timeout and returns combined output.
 func run(name string, args ...string) (string, error) {
+	return runOpts(defaultTimeout, nil, name, args...)
+}
+
+// runOpts executes a command with a custom timeout and optional extra
+// environment variables (appended to the current environment), returning
+// combined output. Used for long-running, non-interactive work like apt.
+func runOpts(timeout time.Duration, extraEnv []string, name string, args ...string) (string, error) {
 	cmd := exec.Command(name, args...)
+	if len(extraEnv) > 0 {
+		cmd.Env = append(os.Environ(), extraEnv...)
+	}
 	var buf bytes.Buffer
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf
@@ -37,7 +50,7 @@ func run(name string, args ...string) (string, error) {
 			return out, fmt.Errorf("%s %s: %w: %s", name, strings.Join(args, " "), err, out)
 		}
 		return out, nil
-	case <-time.After(2 * time.Minute):
+	case <-time.After(timeout):
 		cmd.Process.Kill()
 		return "", fmt.Errorf("%s: timed out", name)
 	}

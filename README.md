@@ -20,7 +20,7 @@
 - **Usage & quotas** — live disk usage per account (web/mail/databases) with optional disk quotas enforced on uploads, mailboxes and databases
 - **Traffic accounting** — per-account and per-domain bandwidth, tallied incrementally from the nginx access logs with a daily history chart
 - **Users & resellers** — admin / reseller / user roles; resellers manage their own customers
-- **Services & firewall** — systemd service control and ufw management from the UI
+- **Services & firewall** — systemd service control and ufw management from the UI, plus one-click installation of additional PHP-FPM versions (from the distro's multi-version PHP repo) so each site can run a different PHP
 - **API tokens** — personal access tokens for the REST API (`Authorization: Bearer …`) with optional expiry, scoped to the issuing account's role
 - **Security** — bcrypt passwords, HttpOnly+SameSite session cookies, HTTPS out of the box, per-site open_basedir, path-jailed file operations
 

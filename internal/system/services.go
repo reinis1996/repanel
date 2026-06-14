@@ -8,11 +8,11 @@ import (
 )
 
 // ManagedServices lists the units the panel knows how to supervise,
-// mirroring the service list of Plesk / DirectAdmin.
+// mirroring the service list of Plesk / DirectAdmin. A php<ver>-fpm entry is
+// added for each installed PHP version by managedServices().
 var ManagedServices = []models.ServiceStatus{
 	{Name: "nginx", DisplayName: "Web Server (nginx)", Description: "Serves customer websites"},
 	{Name: "apache2", DisplayName: "Web Server (Apache)", Description: "Alternative/backend web server"},
-	{Name: "php8.3-fpm", DisplayName: "PHP-FPM 8.3", Description: "PHP application server"},
 	{Name: "mariadb", DisplayName: "Database (MariaDB)", Description: "MySQL-compatible database server"},
 	{Name: "postgresql", DisplayName: "Database (PostgreSQL)", Description: "PostgreSQL database server"},
 	{Name: "bind9", DisplayName: "DNS Server (BIND)", Description: "Authoritative DNS"},
@@ -26,6 +26,26 @@ var ManagedServices = []models.ServiceStatus{
 	{Name: "repanel", DisplayName: "RePanel", Description: "This control panel"},
 }
 
+// managedServices returns the supervised units with a php<ver>-fpm entry for
+// each installed PHP version inserted right after the web servers, so the
+// Services view reflects whatever PHP versions are actually present.
+func managedServices() []models.ServiceStatus {
+	out := make([]models.ServiceStatus, 0, len(ManagedServices)+2)
+	for _, s := range ManagedServices {
+		out = append(out, s)
+		if s.Name == "apache2" {
+			for _, v := range PHPVersions() {
+				out = append(out, models.ServiceStatus{
+					Name:        "php" + v + "-fpm",
+					DisplayName: "PHP-FPM " + v,
+					Description: "PHP application server",
+				})
+			}
+		}
+	}
+	return out
+}
+
 func systemctl(args ...string) (string, error) {
 	if !have("systemctl") {
 		return "", fmt.Errorf("systemctl not available on this host")
@@ -35,8 +55,7 @@ func systemctl(args ...string) (string, error) {
 
 // ServiceList returns the status of every managed unit.
 func ServiceList() []models.ServiceStatus {
-	out := make([]models.ServiceStatus, len(ManagedServices))
-	copy(out, ManagedServices)
+	out := managedServices()
 	if !have("systemctl") {
 		return out
 	}
@@ -65,7 +84,7 @@ func ServiceAction(unit, action string) error {
 		return fmt.Errorf("unsupported action %q", action)
 	}
 	known := false
-	for _, s := range ManagedServices {
+	for _, s := range managedServices() {
 		if s.Name == unit {
 			known = true
 			break
