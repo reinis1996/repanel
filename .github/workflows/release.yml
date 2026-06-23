@@ -1,0 +1,177 @@
+# Continuous releases.
+#
+# Every push (merge) to main computes the next semver tag from the commit
+# messages since the last tag — conventional-commit style:
+#   feat:            → minor bump
+#   anything else    → patch bump
+#   type!: / BREAKING CHANGE → major bump
+# …builds the panel (repanel-linux-<arch>) and the CLI client
+# (repctl-linux-<arch>) for every architecture install.sh supports and publishes
+# a GitHub release, which also creates the tag. Asset names match the installer's
+# download URLs:
+#   https://github.com/<repo>/releases/latest/download/repanel-linux-$ARCH
+#   https://github.com/<repo>/releases/latest/download/repctl-linux-$ARCH
+#
+# Put "[skip release]" in the merge commit subject to push to main without
+# releasing. Manually pushed v* tags still release as before.
+name: Release
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write # create tags, releases and upload assets
+
+# SECURITY_AUDIT F-19: third-party actions below are pinned to major-version
+# tags for readability. For supply-chain hardening, pin each to a full commit
+# SHA (e.g. `actions/checkout@<sha> # v4`) so a compromised/retagged release
+# cannot alter the build.
+
+# Serialize runs so two merges can't compute the same next tag.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.ver.outputs.tag }}
+      release: ${{ steps.ver.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so git describe finds the last tag
+
+      - name: Determine version
+        id: ver
+        run: |
+          set -eu
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git log -1 --format=%s | grep -qiF '[skip release]'; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping release: [skip release] in commit subject."
+            exit 0
+          fi
+
+          # Use the highest existing semver tag (across ALL tags), not the
+          # nearest ancestor. git describe walks commit ancestry, so a tag that
+          # lives on an orphaned/rewritten commit would let us recompute a tag
+          # that already exists — action-gh-release then no-ops instead of
+          # cutting a release. Sorting all v*.*.* tags guarantees a strictly
+          # higher, collision-free next version.
+          last="$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)"
+          [ -z "$last" ] && last=v0.0.0
+          if [ "$last" = "v0.0.0" ]; then range="HEAD"; else range="$last..HEAD"; fi
+
+          if [ -z "$(git log --format=%s $range)" ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping release: no new commits since $last."
+            exit 0
+          fi
+
+          bump=patch
+          git log --format='%s%n%b' $range | grep -qE '^[a-z]+(\([^)]*\))?!:|^BREAKING CHANGE' && bump=major
+          if [ "$bump" = "patch" ]; then
+            git log --format=%s $range | grep -qE '^feat(\([^)]*\))?:' && bump=minor
+          fi
+
+          v="${last#v}"
+          major="${v%%.*}"; rest="${v#*.}"
+          minor="${rest%%.*}"; patch="${rest#*.}"
+          case "$bump" in
+            major) major=$((major+1)); minor=0; patch=0 ;;
+            minor) minor=$((minor+1)); patch=0 ;;
+            patch) patch=$((patch+1)) ;;
+          esac
+          tag="v$major.$minor.$patch"
+
+          echo "Last tag: $last → next: $tag ($bump bump)"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    if: needs.version.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goarch: amd64
+          - goarch: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build web UI
+        run: |
+          cd web
+          npm ci
+          npm run build
+
+      - name: Build binaries
+        env:
+          GOOS: linux
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          ldflags="-s -w -X main.version=${TAG#v}"
+          # Panel server (embeds the web UI built above).
+          go build -trimpath -ldflags "$ldflags" \
+            -o "repanel-linux-${{ matrix.goarch }}" ./cmd/repanel
+          # Command-line client (repctl), downloaded by install.sh.
+          go build -trimpath -ldflags "$ldflags" \
+            -o "repctl-linux-${{ matrix.goarch }}" ./cmd/repctl
+
+      - name: Checksums
+        run: |
+          sha256sum "repanel-linux-${{ matrix.goarch }}" > "repanel-linux-${{ matrix.goarch }}.sha256"
+          sha256sum "repctl-linux-${{ matrix.goarch }}"  > "repctl-linux-${{ matrix.goarch }}.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repanel-linux-${{ matrix.goarch }}
+          path: |
+            repanel-linux-${{ matrix.goarch }}
+            repanel-linux-${{ matrix.goarch }}.sha256
+            repctl-linux-${{ matrix.goarch }}
+            repctl-linux-${{ matrix.goarch }}.sha256
+          if-no-files-found: error
+
+  release:
+    needs: [version, build]
+    if: needs.version.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      # Creating the release also creates the tag when it doesn't exist yet
+      # (the auto-tag path for pushes to main).
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          files: |
+            repanel-linux-*
+            repctl-linux-*
+          generate_release_notes: true
