@@ -48,7 +48,7 @@
 On a **fresh** Debian 12+ / Ubuntu 22.04+ server, as root:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/master/scripts/install.sh | sh
 ```
 
 Then open `https://<server-ip>:8443` and create the administrator account. The installer sets up nginx, PHP-FPM, MariaDB, BIND, Postfix, Dovecot, ProFTPD, certbot, ufw and fail2ban, and wires them all to the panel. It also installs the `repctl` command-line client.
@@ -72,10 +72,10 @@ be set to nginx-only, Apache-only, or nginx+Apache from the panel), set
 
 ```sh
 # Apache only
-curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/main/scripts/install.sh | WEB_SERVER=apache sh
+curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/master/scripts/install.sh | WEB_SERVER=apache sh
 
 # nginx fronting Apache — per-site choice in the panel (Apache backend on :8080)
-curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/main/scripts/install.sh | WEB_SERVER=nginx-apache sh
+curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/master/scripts/install.sh | WEB_SERVER=nginx-apache sh
 ```
 
 In the `nginx-apache` stack the **Web** column on the Websites page lets you
@@ -88,7 +88,7 @@ To install PostgreSQL alongside MariaDB, run the installer with `WITH_POSTGRES=1
 (or `apt install postgresql` later — the panel detects it automatically):
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/main/scripts/install.sh | WITH_POSTGRES=1 sh
+curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/master/scripts/install.sh | WITH_POSTGRES=1 sh
 ```
 
 To install Roundcube webmail, run the installer with `WITH_WEBMAIL=1` (or
@@ -96,14 +96,14 @@ To install Roundcube webmail, run the installer with `WITH_WEBMAIL=1` (or
 at `webmail.<domain>` for opted-in domains):
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/main/scripts/install.sh | WITH_WEBMAIL=1 sh
+curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/master/scripts/install.sh | WITH_WEBMAIL=1 sh
 ```
 
 To install spam filtering and antivirus, run the installer with `WITH_ANTISPAM=1`
 (rspamd + ClamAV); spam filtering is then toggled per domain from the Mail page:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/main/scripts/install.sh | WITH_ANTISPAM=1 sh
+curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/master/scripts/install.sh | WITH_ANTISPAM=1 sh
 ```
 
 (Flags combine, e.g. `WITH_POSTGRES=1 WITH_WEBMAIL=1 WITH_ANTISPAM=1`.) Node.js

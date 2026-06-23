@@ -1,6 +1,6 @@
 # Continuous releases.
 #
-# Every push (merge) to main computes the next semver tag from the commit
+# Every push (merge) to master computes the next semver tag from the commit
 # messages since the last tag — conventional-commit style:
 #   feat:            → minor bump
 #   anything else    → patch bump
@@ -12,13 +12,13 @@
 #   https://github.com/<repo>/releases/latest/download/repanel-linux-$ARCH
 #   https://github.com/<repo>/releases/latest/download/repctl-linux-$ARCH
 #
-# Put "[skip release]" in the merge commit subject to push to main without
+# Put "[skip release]" in the merge commit subject to push to master without
 # releasing. Manually pushed v* tags still release as before.
 name: Release
 
 on:
   push:
-    branches: ["main"]
+    branches: ["master"]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -166,7 +166,7 @@ jobs:
           merge-multiple: true
 
       # Creating the release also creates the tag when it doesn't exist yet
-      # (the auto-tag path for pushes to main).
+      # (the auto-tag path for pushes to master).
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.version.outputs.tag }}
