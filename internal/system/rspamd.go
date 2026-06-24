@@ -89,8 +89,11 @@ clamav {
 	os.WriteFile(filepath.Join(rspamdLocalDir, "antivirus.conf"), []byte(av), 0o644)
 
 	if have("postconf") {
-		ensurePostfixMilter("smtpd_milters", "inet:localhost:11332")
-		ensurePostfixMilter("non_smtpd_milters", "inet:localhost:11332")
+		// Use 127.0.0.1, not "localhost": on dual-stack hosts the latter resolves
+		// to ::1 first and Postfix can fail to reach the milter ("connect to
+		// Milter service ... Connection refused").
+		ensurePostfixMilter("smtpd_milters", "inet:127.0.0.1:11332")
+		ensurePostfixMilter("non_smtpd_milters", "inet:127.0.0.1:11332")
 		run("postconf", "-e", "milter_default_action = accept")
 		run("postconf", "-e", "milter_protocol = 6")
 		ReloadService("postfix")

@@ -433,18 +433,27 @@ KeyTable             /etc/opendkim/key.table
 SigningTable         refile:/etc/opendkim/signing.table
 ExternalIgnoreList   /etc/opendkim/trusted.hosts
 InternalHosts        /etc/opendkim/trusted.hosts
-Socket               inet:8891@localhost
+Socket               inet:8891@127.0.0.1
 PidFile              /run/opendkim/opendkim.pid
 OversignHeaders      From
 UserID               opendkim
 EOF
+# Debian's /etc/default/opendkim overrides the socket via a systemd generator, so
+# it must agree with opendkim.conf or it wins (often pointing at a unix socket).
+# Pin it to the same IPv4 address Postfix connects to. Bind 127.0.0.1 explicitly,
+# not "localhost": that resolves to ::1 first and Postfix's milter then can't
+# reach it ("connect to Milter service ... Connection refused").
+if [ -f /etc/default/opendkim ]; then
+  sed -ri 's|^[[:space:]]*#?[[:space:]]*SOCKET=.*|SOCKET="inet:8891@127.0.0.1"|' /etc/default/opendkim
+  grep -q '^SOCKET=' /etc/default/opendkim || echo 'SOCKET="inet:8891@127.0.0.1"' >> /etc/default/opendkim
+fi
 chown -R opendkim:opendkim /etc/opendkim
 # Wire OpenDKIM into Postfix as a milter (the panel writes the tables/keys).
 postconf -e \
   "milter_default_action = accept" \
   "milter_protocol = 6" \
-  "smtpd_milters = inet:localhost:8891" \
-  "non_smtpd_milters = inet:localhost:8891"
+  "smtpd_milters = inet:127.0.0.1:8891" \
+  "non_smtpd_milters = inet:127.0.0.1:8891"
 systemctl enable --now opendkim >/dev/null 2>&1 || say "WARNING: opendkim failed to start — check 'journalctl -u opendkim'"
 systemctl restart postfix
 
@@ -501,9 +510,9 @@ if [ "${WITH_ANTISPAM:-0}" = 1 ]; then
     CUR_MILTERS=$(postconf -h smtpd_milters 2>/dev/null)
     case "$CUR_MILTERS" in
       *11332*) : ;;
-      "") postconf -e "smtpd_milters = inet:localhost:11332" "non_smtpd_milters = inet:localhost:11332" ;;
-      *)  postconf -e "smtpd_milters = ${CUR_MILTERS}, inet:localhost:11332" \
-                     "non_smtpd_milters = ${CUR_MILTERS}, inet:localhost:11332" ;;
+      "") postconf -e "smtpd_milters = inet:127.0.0.1:11332" "non_smtpd_milters = inet:127.0.0.1:11332" ;;
+      *)  postconf -e "smtpd_milters = ${CUR_MILTERS}, inet:127.0.0.1:11332" \
+                     "non_smtpd_milters = ${CUR_MILTERS}, inet:127.0.0.1:11332" ;;
     esac
     # Wire ClamAV into rspamd's antivirus module.
     mkdir -p /etc/rspamd/local.d
