@@ -127,6 +127,12 @@ fi
 # `postgresql` yourself later — the panel detects it automatically.
 if [ "${WITH_POSTGRES:-0}" = 1 ]; then
   say "Installing PostgreSQL (WITH_POSTGRES=1)"
+  # Install postgresql-common on its own first: it provides pg_lsclusters, which
+  # the postgresql package's debconf .config script calls during apt's
+  # pre-configure phase. In a single transaction that phase runs before
+  # postgresql-common is unpacked, so the script fails with
+  # "pg_lsclusters: not found"; a separate earlier step makes it available.
+  apt-get install -y -qq postgresql-common >/dev/null
   apt-get install -y -qq postgresql php-pgsql >/dev/null
   systemctl enable --now postgresql >/dev/null 2>&1 || true
 fi
