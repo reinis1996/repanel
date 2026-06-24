@@ -301,6 +301,10 @@ mail_gid = vmail
 first_valid_uid = 5000
 last_valid_uid = 5000
 
+# Look users up by full address; the 2.4 default strips the domain, so LMTP
+# delivery would miss the passwd-file (keyed by the full address).
+auth_username_format = %{user | lower}
+
 passdb passwd-file {
   passwd_file_path = $CONF_DIR/mail/passwd
   default_password_scheme = SHA512-CRYPT
