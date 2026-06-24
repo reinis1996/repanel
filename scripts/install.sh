@@ -348,13 +348,16 @@ if [ "${WITH_WEBMAIL:-0}" = 1 ]; then
   echo "roundcube-core roundcube/dbconfig-install boolean true" | debconf-set-selections
   echo "roundcube-core roundcube/database-type select sqlite3"  | debconf-set-selections
   if apt-get install -y -qq roundcube roundcube-core roundcube-sqlite3 >/dev/null 2>&1; then
-    # Point Roundcube at the local Dovecot/Postfix.
+    # Point Roundcube at the local Dovecot/Postfix. Use 127.0.0.1, not
+    # "localhost": the latter resolves to ::1 first on dual-stack hosts, and the
+    # IPv6 indirection makes Roundcube's many per-refresh IMAP connections slow
+    # enough to hit nginx's upstream timeout (504).
     RC_CONF=/etc/roundcube/config.inc.php
     if [ -f "$RC_CONF" ]; then
-      sed -i "s#^\$config\['imap_host'\].*#\$config['imap_host'] = 'localhost:143';#" "$RC_CONF" 2>/dev/null || true
-      sed -i "s#^\$config\['smtp_host'\].*#\$config['smtp_host'] = 'localhost:587';#" "$RC_CONF" 2>/dev/null || true
-      grep -q "imap_host" "$RC_CONF" || echo "\$config['imap_host'] = 'localhost:143';" >> "$RC_CONF"
-      grep -q "smtp_host" "$RC_CONF" || echo "\$config['smtp_host'] = 'localhost:587';" >> "$RC_CONF"
+      sed -i "s#^\$config\['imap_host'\].*#\$config['imap_host'] = '127.0.0.1:143';#" "$RC_CONF" 2>/dev/null || true
+      sed -i "s#^\$config\['smtp_host'\].*#\$config['smtp_host'] = '127.0.0.1:587';#" "$RC_CONF" 2>/dev/null || true
+      grep -q "imap_host" "$RC_CONF" || echo "\$config['imap_host'] = '127.0.0.1:143';" >> "$RC_CONF"
+      grep -q "smtp_host" "$RC_CONF" || echo "\$config['smtp_host'] = '127.0.0.1:587';" >> "$RC_CONF"
     fi
     say "Roundcube installed — enable webmail per domain from the Mail page"
   else
