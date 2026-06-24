@@ -144,6 +144,20 @@ func HashMailPassword(password string) (string, error) {
 	return "", fmt.Errorf("no password hashing tool available (need doveadm or openssl)")
 }
 
+// SetMailHostname points Postfix's identity (myhostname + myorigin) at the given
+// FQDN and reloads it, so mail announces a real hostname in HELO and Received
+// headers instead of the system default (e.g. "repanel.internal"), which hurts
+// deliverability. The FQDN should have a matching A and PTR record. No-op when
+// postconf is absent or fqdn is empty.
+func SetMailHostname(fqdn string) error {
+	if !Linux() || !have("postconf") || fqdn == "" {
+		return nil
+	}
+	run("postconf", "-e", "myhostname = "+fqdn)
+	run("postconf", "-e", "myorigin = $myhostname")
+	return ReloadService("postfix")
+}
+
 // EnsureMaildir pre-creates the maildir owned by the vmail user.
 func EnsureMaildir(address string) error {
 	if !Linux() {

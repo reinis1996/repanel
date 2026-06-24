@@ -212,6 +212,7 @@ func (s *Server) handleSettingsSet(w http.ResponseWriter, r *http.Request, _ *mo
 		return
 	}
 	dnsChanged := false
+	hostnameChanged := false
 	for _, k := range editableSettings {
 		v, ok := req[k]
 		if !ok {
@@ -221,6 +222,9 @@ func (s *Server) handleSettingsSet(w http.ResponseWriter, r *http.Request, _ *mo
 		if msg := settingError(k, v); msg != "" {
 			s.err(w, http.StatusBadRequest, k+": "+msg)
 			return
+		}
+		if k == "panel_hostname" && v != s.DB.Setting(k) {
+			hostnameChanged = true
 		}
 		if k == "slave_dns" {
 			// Normalize to the valid IPs so an invalid entry can't silently
@@ -244,6 +248,17 @@ func (s *Server) handleSettingsSet(w http.ResponseWriter, r *http.Request, _ *mo
 		if err := s.rewriteAllZones(); err != nil {
 			s.fail(w, "rewrite zones", err)
 			return
+		}
+	}
+	// Point Postfix's HELO/identity at the panel hostname when it's a FQDN, so mail
+	// announces a real name instead of the system default. A bare label is skipped
+	// (an unqualified myhostname would be worse for deliverability).
+	if hostnameChanged {
+		if h := s.DB.Setting("panel_hostname"); strings.Contains(h, ".") {
+			if err := system.SetMailHostname(h); err != nil {
+				s.fail(w, "set mail hostname", err)
+				return
+			}
 		}
 	}
 	s.json(w, map[string]bool{"ok": true})
