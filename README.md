@@ -63,6 +63,29 @@ Then open `https://<server-ip>:8443` and create the administrator account. The i
 > sha256sum -c "repanel-linux-$ARCH.sha256"
 > ```
 
+### Installer options
+
+The installer is configured with environment variables passed on the same line.
+They all have safe defaults — the bare command above installs the standard nginx
+stack — and they combine freely:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/reinis1996/repanel/master/scripts/install.sh \
+  | WEB_SERVER=nginx-apache WITH_POSTGRES=1 WITH_WEBMAIL=1 WITH_ANTISPAM=1 sh
+```
+
+| Variable | Default | Values | What it does |
+|---|---|---|---|
+| `WEB_SERVER` | `nginx` | `nginx` · `apache` · `nginx-apache` | Web server stack. `nginx` serves every site directly; `apache` makes Apache own `:80`/`:443`; `nginx-apache` puts nginx in front and lets each site pick nginx-only, Apache-only or nginx+Apache from the panel. |
+| `APACHE_PORT` | `8080` | port number | Loopback port Apache listens on as the backend in the `nginx-apache` stack (ignored otherwise). |
+| `WITH_POSTGRES` | `0` | `0` · `1` | Also install PostgreSQL alongside MariaDB, so customers can create Postgres databases. The panel auto-detects it, so you can `apt install postgresql` later instead. |
+| `WITH_WEBMAIL` | `0` | `0` · `1` | Install Roundcube webmail (SQLite store) served at `webmail.<domain>` for opted-in domains. Auto-detected, so `apt install roundcube` later also works. |
+| `WITH_ANTISPAM` | `0` | `0` · `1` | Install rspamd (spam filtering) + ClamAV (virus scanning) and wire them into Postfix; spam filtering is then toggled per domain on the Mail page. Can also be installed later from the panel. |
+
+The sections below walk through each option with full examples. The panel listens
+on `:8443`; paths and other runtime settings (which are *not* installer flags) are
+configured afterwards in `/etc/repanel/repanel.conf` — see [Configuration](#configuration).
+
 ### Choosing a web server
 
 By default RePanel installs **nginx** and serves every site from it. To use
