@@ -206,52 +206,65 @@ func reloadApache() error {
 	return ReloadService("apache2")
 }
 
+// One vhost per enabled domain so each webmail.<domain> can present its own
+// certificate. The :80 vhost always serves the ACME challenge from the parent
+// domain's docroot; with a certificate it redirects to HTTPS, otherwise it
+// serves Roundcube directly.
 var apacheWebmailTemplate = template.Must(template.New("apachewebmail").Parse(`# Managed by RePanel — webmail (Roundcube). Regenerated from panel state.
+{{- $root := .Root}}{{- $php := .PHPSock}}
+{{- range .Hosts}}
 <VirtualHost *:80>
-    ServerName {{.ServerName}}
-{{- range .ServerAliases}}
-    ServerAlias {{.}}
-{{- end}}
-    DocumentRoot {{.Root}}
+    ServerName webmail.{{.Domain}}
 
-    <Directory {{.Root}}>
+    Alias "/.well-known/acme-challenge" "{{.DocRoot}}/.well-known/acme-challenge"
+    <Directory "{{.DocRoot}}/.well-known/acme-challenge">
+        Require all granted
+    </Directory>
+{{- if .CertPath}}
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName webmail.{{.Domain}}
+
+    SSLEngine on
+    SSLCertificateFile {{.CertPath}}
+    SSLCertificateKeyFile {{.KeyPath}}
+{{- end}}
+
+    DocumentRoot {{$root}}
+
+    <Directory {{$root}}>
         Options -Indexes +FollowSymLinks
         AllowOverride All
         Require all granted
     </Directory>
 
     <FilesMatch \.php$>
-        SetHandler "proxy:unix:{{.PHPSock}}|fcgi://localhost"
+        SetHandler "proxy:unix:{{$php}}|fcgi://localhost"
     </FilesMatch>
 
-    <DirectoryMatch "^{{.Root}}/(config|temp|logs|bin|SQL|installer)/">
+    <DirectoryMatch "^{{$root}}/(config|temp|logs|bin|SQL|installer)/">
         Require all denied
     </DirectoryMatch>
 
     ErrorLog ${APACHE_LOG_DIR}/webmail.error.log
     CustomLog ${APACHE_LOG_DIR}/webmail.access.log combined
 </VirtualHost>
+{{- end}}
 `))
 
 type apacheWebmailData struct {
-	ServerName    string
-	ServerAliases []string
-	Root          string
-	PHPSock       string
+	Root    string
+	PHPSock string
+	Hosts   []WebmailHost
 }
 
-// renderApacheWebmailVhost renders the shared webmail vhost for an Apache front.
-func renderApacheWebmailVhost(root, phpSock string, domains []string) (string, error) {
-	hosts := make([]string, len(domains))
-	for i, d := range domains {
-		hosts[i] = "webmail." + d
-	}
-	data := apacheWebmailData{Root: root, PHPSock: phpSock}
-	if len(hosts) > 0 {
-		data.ServerName = hosts[0]
-		data.ServerAliases = hosts[1:]
-	}
+// renderApacheWebmailVhost renders one webmail vhost per enabled domain.
+func renderApacheWebmailVhost(root, phpSock string, hosts []WebmailHost) (string, error) {
 	var sb strings.Builder
-	err := apacheWebmailTemplate.Execute(&sb, data)
+	err := apacheWebmailTemplate.Execute(&sb, apacheWebmailData{Root: root, PHPSock: phpSock, Hosts: hosts})
 	return sb.String(), err
 }

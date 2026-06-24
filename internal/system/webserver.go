@@ -286,14 +286,15 @@ func (ws *WebServer) WriteSuspendedVhost(d models.Domain) error {
 	return ws.reloadAll()
 }
 
-// RebuildWebmail regenerates the shared webmail vhost on the front server from
-// the list of enabled domains; with no domains it removes the vhost.
-func (ws *WebServer) RebuildWebmail(domains []string) error {
+// RebuildWebmail regenerates the webmail vhost on the front server from the list
+// of enabled domains (each with its certificate, when one exists); with no hosts
+// it removes the vhost.
+func (ws *WebServer) RebuildWebmail(hosts []WebmailHost) error {
 	nginxConf := filepath.Join(nginxConfDir(ws.NginxDir), "webmail.conf")
 	apacheConf := filepath.Join(apacheConfDir(ws.ApacheDir), "webmail.conf")
 	root := WebmailRoot()
 
-	if len(domains) == 0 || root == "" {
+	if len(hosts) == 0 || root == "" {
 		os.Remove(nginxConf)
 		os.Remove(apacheConf)
 		return ws.reloadAll()
@@ -301,7 +302,7 @@ func (ws *WebServer) RebuildWebmail(domains []string) error {
 
 	if ws.frontIsApache() {
 		os.Remove(nginxConf)
-		conf, err := renderApacheWebmailVhost(root, DefaultPHPSocket(), domains)
+		conf, err := renderApacheWebmailVhost(root, DefaultPHPSocket(), hosts)
 		if err != nil {
 			return err
 		}
@@ -313,7 +314,7 @@ func (ws *WebServer) RebuildWebmail(domains []string) error {
 		}
 	} else {
 		os.Remove(apacheConf)
-		conf, err := renderWebmailVhost(root, DefaultPHPSocket(), domains)
+		conf, err := renderWebmailVhost(root, DefaultPHPSocket(), hosts)
 		if err != nil {
 			return err
 		}

@@ -24,13 +24,6 @@ func CertDir(dataDir, domain string) string {
 	return filepath.Join(dataDir, "certs", domain)
 }
 
-// IssueLetsEncrypt obtains a certificate with certbot in webroot mode (the
-// vhost template always serves /.well-known/acme-challenge from the docroot).
-// Returns cert/key paths on success.
-func IssueLetsEncrypt(dataDir, domain, docroot, email string) (certPath, keyPath string, err error) {
-	return IssueLetsEncryptHosts(docroot, email, domain, "www."+domain)
-}
-
 // IssueLetsEncryptHosts obtains a certificate covering one or more hostnames in
 // webroot mode. The first host names the certificate (its live directory). Used
 // for domains (apex + www) and for function URLs (a single host, no www).

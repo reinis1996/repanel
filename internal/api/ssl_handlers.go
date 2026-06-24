@@ -33,6 +33,13 @@ func (s *Server) handleCertList(w http.ResponseWriter, r *http.Request, u *model
 	s.json(w, out)
 }
 
+// domainWebmailEnabled reports whether the domain has webmail (Roundcube) on.
+func (s *Server) domainWebmailEnabled(domainID int64) bool {
+	var n int
+	s.DB.QueryRow(`SELECT webmail FROM domains WHERE id = ?`, domainID).Scan(&n)
+	return n == 1
+}
+
 func (s *Server) handleCertIssue(w http.ResponseWriter, r *http.Request, u *models.User) {
 	req, err := decode[struct {
 		DomainID int64  `json:"domain_id"`
@@ -53,8 +60,16 @@ func (s *Server) handleCertIssue(w http.ResponseWriter, r *http.Request, u *mode
 	switch req.Method {
 	case "letsencrypt":
 		issuer = "letsencrypt"
-		certPath, keyPath, err = system.IssueLetsEncrypt(s.Cfg.DataDir, d.Name, d.DocumentRoot,
-			s.DB.Setting("admin_email"))
+		// Cover apex + www, plus webmail.<domain> when webmail is enabled so the
+		// same certificate secures the Roundcube vhost. The webmail vhost serves
+		// webmail.<domain>'s ACME challenge from this docroot, so make sure it is
+		// in place before certbot validates (it may not be on first issue).
+		hosts := []string{d.Name, "www." + d.Name}
+		if s.domainWebmailEnabled(d.ID) {
+			hosts = append(hosts, "webmail."+d.Name)
+			s.rebuildWebmail()
+		}
+		certPath, keyPath, err = system.IssueLetsEncryptHosts(d.DocumentRoot, s.DB.Setting("admin_email"), hosts...)
 		if err == nil {
 			notAfter, _ = system.CertExpiry(certPath)
 		}
@@ -103,6 +118,10 @@ func (s *Server) handleCertIssue(w http.ResponseWriter, r *http.Request, u *mode
 		s.fail(w, "rewrite vhost", err)
 		return
 	}
+	// Pick up the new certificate on the domain's webmail vhost, if enabled.
+	if s.domainWebmailEnabled(d.ID) {
+		s.rebuildWebmail()
+	}
 	id, _ := res.LastInsertId()
 	s.json(w, models.Certificate{ID: id, DomainID: d.ID, Domain: d.Name, Issuer: issuer,
 		NotAfter: notAfter, CertPath: certPath, KeyPath: keyPath})
@@ -130,6 +149,10 @@ func (s *Server) handleCertDelete(w http.ResponseWriter, r *http.Request, u *mod
 	}
 	if d, err := s.getDomainScoped(u, domainID); err == nil && !d.Suspended {
 		s.rewriteVhost(*d)
+	}
+	// Drop the (now removed) certificate from the webmail vhost too, if enabled.
+	if s.domainWebmailEnabled(domainID) {
+		s.rebuildWebmail()
 	}
 	s.json(w, map[string]bool{"ok": true})
 }
@@ -167,6 +190,9 @@ func (s *Server) handleCertUpload(w http.ResponseWriter, r *http.Request, u *mod
 	if err := s.rewriteVhost(*d); err != nil {
 		s.fail(w, "rewrite vhost", err)
 		return
+	}
+	if s.domainWebmailEnabled(d.ID) {
+		s.rebuildWebmail()
 	}
 	id, _ := res.LastInsertId()
 	s.json(w, models.Certificate{ID: id, DomainID: d.ID, Domain: d.Name, Issuer: "custom",

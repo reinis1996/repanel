@@ -107,19 +107,24 @@ func (s *Server) handleWebmailDisable(w http.ResponseWriter, r *http.Request, u 
 	s.json(w, map[string]bool{"ok": true})
 }
 
-// rebuildWebmail regenerates the shared webmail vhost from every enabled domain.
+// rebuildWebmail regenerates the webmail vhost from every enabled domain, each
+// joined with its document root and latest certificate (so webmail.<domain> is
+// served over HTTPS with the domain's own cert when one exists).
 func (s *Server) rebuildWebmail() error {
-	rows, err := s.DB.Query(`SELECT name FROM domains WHERE webmail = 1 ORDER BY name`)
+	rows, err := s.DB.Query(`SELECT d.name, d.document_root,
+		COALESCE((SELECT c.cert_path FROM certificates c WHERE c.domain_id = d.id ORDER BY c.id DESC LIMIT 1), ''),
+		COALESCE((SELECT c.key_path  FROM certificates c WHERE c.domain_id = d.id ORDER BY c.id DESC LIMIT 1), '')
+		FROM domains d WHERE d.webmail = 1 ORDER BY d.name`)
 	if err != nil {
 		return err
 	}
-	var domains []string
+	var hosts []system.WebmailHost
 	for rows.Next() {
-		var name string
-		if rows.Scan(&name) == nil {
-			domains = append(domains, name)
+		var h system.WebmailHost
+		if rows.Scan(&h.Domain, &h.DocRoot, &h.CertPath, &h.KeyPath) == nil {
+			hosts = append(hosts, h)
 		}
 	}
 	rows.Close()
-	return s.webServer().RebuildWebmail(domains)
+	return s.webServer().RebuildWebmail(hosts)
 }
