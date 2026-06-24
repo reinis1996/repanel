@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -132,6 +133,25 @@ func ensureTrailingNewline(s string) string {
 	return s
 }
 
+// dovecotVersion reports the installed Dovecot major and minor version (e.g.
+// 2, 4 for "2.4.1"), or (0, 0) when it can't be determined.
+func dovecotVersion() (major, minor int) {
+	out, err := run("dovecot", "--version")
+	if err != nil {
+		return 0, 0
+	}
+	fields := strings.Fields(out)
+	if len(fields) == 0 {
+		return 0, 0
+	}
+	parts := strings.Split(fields[0], ".")
+	if len(parts) >= 2 {
+		major, _ = strconv.Atoi(parts[0])
+		minor, _ = strconv.Atoi(parts[1])
+	}
+	return major, minor
+}
+
 // ApplyMailCert points Postfix (SMTP) and Dovecot (IMAP/POP3) at a certificate
 // and reloads them.
 func ApplyMailCert(cert, key string) error {
@@ -142,7 +162,13 @@ func ApplyMailCert(cert, key string) error {
 		ReloadService("postfix")
 	}
 	// Dovecot: a panel-owned snippet wins over the distro default (loaded later).
+	// Dovecot 2.4 renamed the SSL cert settings and takes a plain path (the older
+	// "ssl_cert = <file" inline-read form is gone), so match the installed version
+	// or dovecot refuses to start. Mirrors the installer's version split.
 	conf := fmt.Sprintf("# Managed by RePanel — mail TLS certificate.\nssl = yes\nssl_cert = <%s\nssl_key = <%s\n", cert, key)
+	if maj, min := dovecotVersion(); maj > 2 || (maj == 2 && min >= 4) {
+		conf = fmt.Sprintf("# Managed by RePanel — mail TLS certificate.\nssl = yes\nssl_server_cert_file = %s\nssl_server_key_file = %s\n", cert, key)
+	}
 	if err := os.WriteFile("/etc/dovecot/conf.d/99-repanel-ssl.conf", []byte(conf), 0o644); err != nil {
 		return err
 	}
