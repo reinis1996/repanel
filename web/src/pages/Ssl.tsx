@@ -307,10 +307,11 @@ function PanelUploadModal({ busy, onClose, onSubmit }: { busy: boolean; onClose:
   )
 }
 
+// The control panel certificate has its own dedicated card (PanelCertCard), so
+// it is intentionally not listed here — this section is for mail and FTP only.
 const SERVICES: { key: string; label: string; note: string }[] = [
   { key: 'mail', label: 'Mail (Postfix + Dovecot)', note: 'Secures SMTP/IMAP/POP3 (e.g. mail.<domain>).' },
   { key: 'ftp', label: 'FTP (ProFTPD)', note: 'Enables FTPS.' },
-  { key: 'panel', label: 'Control panel', note: 'The panel restarts to apply its own certificate.' },
 ]
 
 function AssignmentsCard({ certs }: { certs: Certificate[] }) {
@@ -348,7 +349,7 @@ function AssignmentsCard({ certs }: { certs: Certificate[] }) {
       className="mt-4"
     >
       {!certs.length ? (
-        <Empty title="No certificates yet" hint="Issue or upload a certificate, then assign it to mail, FTP or the panel." />
+        <Empty title="No certificates yet" hint="Issue or upload a certificate, then assign it to mail or FTP." />
       ) : (
         <div className="space-y-3">
           {SERVICES.map((svc) => (
