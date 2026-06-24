@@ -114,7 +114,26 @@ func ensurePostfixLMTP() error {
 	run("postconf", "-e", "virtual_transport = lmtp:unix:private/dovecot-lmtp")
 	// Dovecot enforces the quota; let Postfix surface the rejection to senders.
 	run("postconf", "-e", "lmtp_destination_recipient_limit = 1")
+	ensureSubmissionService()
 	return ReloadService("postfix")
+}
+
+// ensureSubmissionService enables Postfix's submission listener on :587 (Debian
+// ships it commented out, so only :25 listens and webmail/clients can't send).
+// Auth uses Dovecot SASL; permit_mynetworks lets local webmail relay without
+// auth. Idempotent — postconf -M/-P just (re)assert the master.cf entry.
+func ensureSubmissionService() {
+	run("postconf", "-M", "submission/inet=submission inet n - y - - smtpd")
+	for _, kv := range []string{
+		"submission/inet/syslog_name=postfix/submission",
+		"submission/inet/smtpd_tls_security_level=may",
+		"submission/inet/smtpd_sasl_type=dovecot",
+		"submission/inet/smtpd_sasl_path=private/auth",
+		"submission/inet/smtpd_sasl_auth_enable=yes",
+		"submission/inet/smtpd_recipient_restrictions=permit_mynetworks,permit_sasl_authenticated,reject_unauth_destination",
+	} {
+		run("postconf", "-P", kv)
+	}
 }
 
 func readPrevious(path string) (string, bool) {

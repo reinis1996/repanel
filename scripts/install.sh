@@ -272,6 +272,18 @@ postconf -e \
   "smtpd_sasl_auth_enable = yes" \
   "smtpd_recipient_restrictions = permit_mynetworks permit_sasl_authenticated reject_unauth_destination"
 
+# Enable the submission service on :587 so mail clients — and webmail — can send.
+# Debian's Postfix ships it commented out, so out of the box only :25 listens and
+# Roundcube's connection to 587 is refused. Authenticated submission uses Dovecot
+# SASL; permit_mynetworks lets local webmail (127.0.0.1) relay without auth.
+postconf -M submission/inet="submission inet n - y - - smtpd"
+postconf -P "submission/inet/syslog_name=postfix/submission"
+postconf -P "submission/inet/smtpd_tls_security_level=may"
+postconf -P "submission/inet/smtpd_sasl_type=dovecot"
+postconf -P "submission/inet/smtpd_sasl_path=private/auth"
+postconf -P "submission/inet/smtpd_sasl_auth_enable=yes"
+postconf -P "submission/inet/smtpd_recipient_restrictions=permit_mynetworks,permit_sasl_authenticated,reject_unauth_destination"
+
 # Dovecot 2.4 (Debian 13+, Ubuntu 25.10+) renamed mail_location and changed
 # the passdb/userdb syntax; write config matching the installed version.
 DOVECOT_VER="$(dovecot --version 2>/dev/null | awk '{print $1}')"
