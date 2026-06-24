@@ -129,6 +129,10 @@ func dovecotDeliveryConf(mailDir string, major int) string {
 		return `# Managed by RePanel (Dovecot >= 2.4) — LMTP delivery + Sieve.
 mail_driver = maildir
 mail_path = /var/mail/vhosts/%{user | domain}/%{user | username}
+# Store INBOX inside the maildir like every other folder. The stock 2.4 config
+# sets mail_inbox_path = /var/mail/%{user} (the system mbox path), which vmail
+# cannot write — leaving it set makes INBOX autocreation fail with EACCES.
+mail_inbox_path =
 mail_uid = vmail
 mail_gid = vmail
 first_valid_uid = 5000

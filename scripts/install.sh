@@ -225,6 +225,9 @@ case "$DOVECOT_VER" in
 # Managed by RePanel (Dovecot >= 2.4 syntax)
 mail_driver = maildir
 mail_path = /var/mail/vhosts/%{user | domain}/%{user | username}
+# Store INBOX in the maildir; the stock 2.4 default (mail_inbox_path =
+# /var/mail/%{user}) points at a path vmail cannot write, breaking INBOX.
+mail_inbox_path =
 mail_uid = vmail
 mail_gid = vmail
 first_valid_uid = 5000
