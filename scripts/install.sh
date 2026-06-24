@@ -389,6 +389,12 @@ namespace inbox {
 EOF
   ;;
 esac
+# Mail is virtual-mailbox only — authenticate against the panel's passwd-file,
+# not the stock PAM/system passdb. Left enabled, PAM is tried first and fails for
+# every virtual user, and pam_unix's failure delay (~2s) makes IMAP logins slow.
+sed -ri 's/^([[:space:]]*!include auth-system\.conf\.ext.*)/#\1  # disabled by RePanel (virtual mailboxes only)/' \
+  /etc/dovecot/conf.d/10-auth.conf 2>/dev/null || true
+
 # dovecot needs read access to the passwd file
 chgrp dovecot "$CONF_DIR/mail/passwd" 2>/dev/null || true
 # Don't abort the whole installation if mail needs manual attention.

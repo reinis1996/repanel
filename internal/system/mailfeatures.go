@@ -52,9 +52,13 @@ func EnsureMailDelivery(mailDir string) error {
 	if !Linux() || !have("doveconf") || !MailFeaturesAvailable() {
 		return nil
 	}
+	// Mail is virtual-mailbox only, so drop Dovecot's stock PAM/system passdb. It
+	// fails for every virtual user and pam_unix's per-failure delay (~2s) makes
+	// IMAP logins — and webmail — painfully slow.
+	authChanged := disableDovecotSystemAuth()
 	conf := dovecotDeliveryConf(mailDir, dovecotMajor())
 	prev, hadPrev := readPrevious(dovecotFeatureConf)
-	if prev == conf {
+	if prev == conf && !authChanged {
 		// Already current; still make sure Postfix points at LMTP.
 		return ensurePostfixLMTP()
 	}
@@ -74,6 +78,32 @@ func EnsureMailDelivery(mailDir string) error {
 		return err
 	}
 	return ensurePostfixLMTP()
+}
+
+// disableDovecotSystemAuth comments out the stock "!include auth-system.conf.ext"
+// line in 10-auth.conf so Dovecot authenticates only against the panel's
+// passwd-file. Left enabled, the PAM/system passdb is tried first and fails for
+// every virtual mailbox, and pam_unix's failure delay (~2s) is added to each
+// login. Idempotent; returns true if it changed the file. Safe because the panel
+// serves virtual mailboxes only — no system account needs IMAP/POP3.
+func disableDovecotSystemAuth() bool {
+	const path = "/etc/dovecot/conf.d/10-auth.conf"
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	lines := strings.Split(string(data), "\n")
+	changed := false
+	for i, ln := range lines {
+		if strings.TrimSpace(ln) == "!include auth-system.conf.ext" {
+			lines[i] = "#" + ln + "  # disabled by RePanel: virtual mailboxes only"
+			changed = true
+		}
+	}
+	if changed {
+		os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o644)
+	}
+	return changed
 }
 
 // ensurePostfixLMTP routes Postfix's virtual delivery to the Dovecot LMTP socket.
