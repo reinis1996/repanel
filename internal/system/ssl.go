@@ -38,7 +38,10 @@ func IssueLetsEncryptHosts(docroot, email string, hosts ...string) (certPath, ke
 	for _, h := range hosts {
 		args = append(args, "-d", h)
 	}
-	args = append(args, "--non-interactive", "--agree-tos", "--keep-until-expiring")
+	// --expand lets certbot replace an existing certificate of the same name when
+	// the requested host set grew (e.g. adding webmail.<domain>); it is a no-op
+	// when the names are unchanged.
+	args = append(args, "--non-interactive", "--agree-tos", "--keep-until-expiring", "--expand")
 	if email != "" {
 		args = append(args, "-m", email)
 	} else {
