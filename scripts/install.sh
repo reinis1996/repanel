@@ -309,6 +309,31 @@ service auth {
     group = postfix
   }
 }
+
+# Auto-create and subscribe the standard special-use folders so clients show
+# Sent/Drafts/Junk/Trash/Archive instead of only INBOX.
+namespace inbox {
+  mailbox Drafts {
+    special_use = \Drafts
+    auto = subscribe
+  }
+  mailbox Sent {
+    special_use = \Sent
+    auto = subscribe
+  }
+  mailbox Junk {
+    special_use = \Junk
+    auto = subscribe
+  }
+  mailbox Trash {
+    special_use = \Trash
+    auto = subscribe
+  }
+  mailbox Archive {
+    special_use = \Archive
+    auto = subscribe
+  }
+}
 EOF
   ;;
 *)
@@ -334,6 +359,31 @@ service auth {
     mode = 0660
     user = postfix
     group = postfix
+  }
+}
+
+# Auto-create and subscribe the standard special-use folders so clients show
+# Sent/Drafts/Junk/Trash/Archive instead of only INBOX.
+namespace inbox {
+  mailbox Drafts {
+    special_use = \Drafts
+    auto = subscribe
+  }
+  mailbox Sent {
+    special_use = \Sent
+    auto = subscribe
+  }
+  mailbox Junk {
+    special_use = \Junk
+    auto = subscribe
+  }
+  mailbox Trash {
+    special_use = \Trash
+    auto = subscribe
+  }
+  mailbox Archive {
+    special_use = \Archive
+    auto = subscribe
   }
 }
 EOF

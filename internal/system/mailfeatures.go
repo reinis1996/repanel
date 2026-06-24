@@ -113,6 +113,36 @@ func dovecotMajor() int {
 	}
 }
 
+// dovecotSpecialMailboxes auto-creates and subscribes the standard special-use
+// folders for every mailbox, so clients (Roundcube, Thunderbird, mobile) show
+// Sent/Drafts/Junk/Trash/Archive instead of only INBOX. It merges into the
+// stock "inbox" namespace by name. The syntax is identical on Dovecot 2.3 and
+// 2.4. (\Junk is what Roundcube/RFC 6154 treat as the spam folder.)
+const dovecotSpecialMailboxes = `
+namespace inbox {
+  mailbox Drafts {
+    special_use = \Drafts
+    auto = subscribe
+  }
+  mailbox Sent {
+    special_use = \Sent
+    auto = subscribe
+  }
+  mailbox Junk {
+    special_use = \Junk
+    auto = subscribe
+  }
+  mailbox Trash {
+    special_use = \Trash
+    auto = subscribe
+  }
+  mailbox Archive {
+    special_use = \Archive
+    auto = subscribe
+  }
+}
+`
+
 // dovecotDeliveryConf renders the panel-owned Dovecot config for the given major
 // version. It supersedes the installer's base config (same path) with LMTP, the
 // Sieve plugin, and per-user quota sourced from the passwd-file userdb.
@@ -177,7 +207,7 @@ sieve_script personal {
   driver = file
   path = ~/.dovecot.sieve
 }
-`
+` + dovecotSpecialMailboxes
 	}
 	return `# Managed by RePanel (Dovecot 2.3) — LMTP delivery + Sieve + quota.
 mail_location = maildir:/var/mail/vhosts/%d/%n
@@ -225,7 +255,7 @@ plugin {
   sieve = file:~/sieve;active=~/.dovecot.sieve
   quota = maildir:User quota
 }
-`
+` + dovecotSpecialMailboxes
 }
 
 // ---- Outbound smarthost relay ----------------------------------------------
