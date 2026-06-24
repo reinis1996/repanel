@@ -15,6 +15,14 @@ DATA_DIR=/var/lib/repanel
 BIN=/usr/local/bin/repanel
 CLI_BIN=/usr/local/bin/repctl
 
+# Remember which options were supplied on the command line (env vars) so the
+# interactive prompts below only ask about the ones that were left out.
+_set_web_server=${WEB_SERVER+1}
+_set_apache_port=${APACHE_PORT+1}
+_set_postgres=${WITH_POSTGRES+1}
+_set_webmail=${WITH_WEBMAIL+1}
+_set_antispam=${WITH_ANTISPAM+1}
+
 # Web server stack: nginx (default), apache, or nginx-apache (nginx fronts
 # :80/:443 and reverse-proxies to Apache on APACHE_PORT). In the nginx-apache
 # stack each website chooses nginx-only, Apache-only or nginx+Apache from the
@@ -36,6 +44,48 @@ case "${ID:-}" in
   debian|ubuntu) ;;
   *) fail "unsupported distribution '$ID' — RePanel supports Debian and Ubuntu" ;;
 esac
+
+# ---- interactive option selection ------------------------------------------
+# On a real terminal, offer to toggle any option that wasn't already given on
+# the command line. Reads from /dev/tty so it still works under `curl ... | sh`
+# (where stdin is the pipe). Piped/automated runs with no controlling terminal
+# skip this entirely and use the defaults, so unattended installs are unaffected.
+# Pre-answer everything (e.g. WITH_WEBMAIL=1) to bypass the prompts.
+if { true < /dev/tty; } 2>/dev/null; then
+  ask_yn() { # $1=prompt $2=default(y|n) -> exit 0 for yes
+    _hint='[y/N]'; [ "$2" = y ] && _hint='[Y/n]'
+    printf '%s %s ' "$1" "$_hint" > /dev/tty
+    read _a < /dev/tty || _a=''
+    [ -z "$_a" ] && _a=$2
+    case "$_a" in [Yy]*) return 0 ;; *) return 1 ;; esac
+  }
+
+  say "Configure installation (press Enter to accept each default):"
+
+  if [ -z "$_set_web_server" ]; then
+    printf '  Web server — 1) nginx  2) apache  3) nginx-apache  [1] ' > /dev/tty
+    read _ws < /dev/tty || _ws=''
+    case "$_ws" in
+      2) WEB_SERVER=apache ;;
+      3) WEB_SERVER=nginx-apache ;;
+      *) WEB_SERVER=nginx ;;
+    esac
+  fi
+  if [ "$WEB_SERVER" = nginx-apache ] && [ -z "$_set_apache_port" ]; then
+    printf '  Apache backend port [%s] ' "$APACHE_PORT" > /dev/tty
+    read _ap < /dev/tty || _ap=''
+    [ -n "$_ap" ] && APACHE_PORT=$_ap
+  fi
+  [ -z "$_set_postgres" ] && { if ask_yn '  Install PostgreSQL (alongside MariaDB)?' n; then WITH_POSTGRES=1; else WITH_POSTGRES=0; fi; }
+  [ -z "$_set_webmail" ]  && { if ask_yn '  Install Roundcube webmail?' n; then WITH_WEBMAIL=1; else WITH_WEBMAIL=0; fi; }
+  [ -z "$_set_antispam" ] && { if ask_yn '  Install spam filtering + antivirus (rspamd + ClamAV)?' n; then WITH_ANTISPAM=1; else WITH_ANTISPAM=0; fi; }
+
+  _opts=''
+  [ "${WITH_POSTGRES:-0}" = 1 ] && _opts="$_opts +postgres"
+  [ "${WITH_WEBMAIL:-0}" = 1 ]  && _opts="$_opts +webmail"
+  [ "${WITH_ANTISPAM:-0}" = 1 ] && _opts="$_opts +antispam"
+  say "Selected: web=$WEB_SERVER$_opts"
+fi
 
 export DEBIAN_FRONTEND=noninteractive
 
