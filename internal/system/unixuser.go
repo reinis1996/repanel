@@ -45,12 +45,19 @@ func EnsureUnixUser(name, home string) error {
 	if !validSysName.MatchString(name) {
 		return fmt.Errorf("invalid system username %q", name)
 	}
-	if _, err := run("id", "-u", name); err == nil {
-		return nil // exists
+	if _, err := run("id", "-u", name); err != nil {
+		if _, err := run("useradd", "--create-home", "--home-dir", home,
+			"--shell", "/usr/sbin/nologin", name); err != nil {
+			return fmt.Errorf("useradd: %w", err)
+		}
 	}
-	if _, err := run("useradd", "--create-home", "--home-dir", home,
-		"--shell", "/usr/sbin/nologin", name); err != nil {
-		return fmt.Errorf("useradd: %w", err)
+	// The web server (www-data) must traverse the account home to serve static
+	// files — and the ACME HTTP-01 challenge — from the docroot beneath it.
+	// useradd creates the home 0700 on modern Debian/Ubuntu, which 404s every
+	// static request; 0711 grants traversal without making the home listable.
+	// Idempotent, so it also repairs accounts created before this fix.
+	if _, err := run("chmod", "0711", home); err != nil {
+		return fmt.Errorf("chmod home: %w", err)
 	}
 	return nil
 }
