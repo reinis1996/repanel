@@ -491,6 +491,10 @@ if [ "${WITH_WEBMAIL:-0}" = 1 ]; then
       sed -i "s#^\$config\['smtp_host'\].*#\$config['smtp_host'] = '127.0.0.1:587';#" "$RC_CONF" 2>/dev/null || true
       grep -q "imap_host" "$RC_CONF" || echo "\$config['imap_host'] = '127.0.0.1:143';" >> "$RC_CONF"
       grep -q "smtp_host" "$RC_CONF" || echo "\$config['smtp_host'] = '127.0.0.1:587';" >> "$RC_CONF"
+      # Store sessions in PHP files, not the (SQLite) DB. SQLite locks the whole
+      # database file per write, and the Elastic skin's parallel requests then
+      # contend on the session table ("database is locked"), stalling webmail.
+      grep -q "session_storage" "$RC_CONF" || echo "\$config['session_storage'] = 'php';" >> "$RC_CONF"
     fi
     say "Roundcube installed — enable webmail per domain from the Mail page"
   else
