@@ -375,6 +375,12 @@ func (s *Server) addSubdomainRecord(parent *models.Domain, subname string) error
 		zoneID, label, "A", ip); err != nil {
 		return err
 	}
+	if ip6 := s.DB.Setting("server_ipv6"); ip6 != "" {
+		if _, err := s.DB.Exec(`INSERT INTO dns_records(zone_id,name,type,value,ttl,priority) VALUES(?,?,?,?,3600,0)`,
+			zoneID, label, "AAAA", ip6); err != nil {
+			return err
+		}
+	}
 	return s.writeZoneFile(zoneID)
 }
 
@@ -391,7 +397,7 @@ func (s *Server) removeSubdomainRecord(d *models.Domain) {
 	if label == "" || label == d.Name {
 		return
 	}
-	s.DB.Exec(`DELETE FROM dns_records WHERE zone_id = ? AND type = 'A' AND name = ?`, zoneID, label)
+	s.DB.Exec(`DELETE FROM dns_records WHERE zone_id = ? AND type IN ('A','AAAA') AND name = ?`, zoneID, label)
 	s.writeZoneFile(zoneID)
 }
 
@@ -444,7 +450,7 @@ func (s *Server) createZoneForDomain(d models.Domain) error {
 		return err
 	}
 	zoneID, _ := res.LastInsertId()
-	for _, rec := range system.DefaultZoneRecords(d.Name, s.DB.Setting("server_ip")) {
+	for _, rec := range system.DefaultZoneRecords(d.Name, s.DB.Setting("server_ip"), s.DB.Setting("server_ipv6")) {
 		if _, err := s.DB.Exec(`INSERT INTO dns_records(zone_id,name,type,value,ttl,priority)
 			VALUES(?,?,?,?,?,?)`, zoneID, rec.Name, rec.Type, rec.Value, rec.TTL, rec.Priority); err != nil {
 			return err

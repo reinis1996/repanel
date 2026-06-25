@@ -66,8 +66,8 @@ func (s *Server) handleWebmailEnable(w http.ResponseWriter, r *http.Request, u *
 	dnsManaged := false
 	if zoneID, ok := s.zoneIDForDomain(d.ID); ok {
 		dnsManaged = true
-		if ip := s.DB.Setting("server_ip"); ip != "" {
-			s.ensureZoneRecord(zoneID, "webmail", "A", ip)
+		if s.DB.Setting("server_ip") != "" || s.DB.Setting("server_ipv6") != "" {
+			s.ensureAddrRecords(zoneID, "webmail")
 			if err := s.writeZoneFile(zoneID); err != nil {
 				s.fail(w, "write zone", err)
 				return
@@ -98,7 +98,7 @@ func (s *Server) handleWebmailDisable(w http.ResponseWriter, r *http.Request, u 
 		return
 	}
 	if zoneID, ok := s.zoneIDForDomain(d.ID); ok {
-		s.DB.Exec(`DELETE FROM dns_records WHERE zone_id = ? AND name = 'webmail' AND type = 'A'`, zoneID)
+		s.DB.Exec(`DELETE FROM dns_records WHERE zone_id = ? AND name = 'webmail' AND type IN ('A','AAAA')`, zoneID)
 		if err := s.writeZoneFile(zoneID); err != nil {
 			s.fail(w, "write zone", err)
 			return

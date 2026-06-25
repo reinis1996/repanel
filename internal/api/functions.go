@@ -201,9 +201,9 @@ func (s *Server) handleFunctionCreate(w http.ResponseWriter, r *http.Request, u 
 			return
 		}
 	} else if zoned {
-		// Publish a wildcard A record so every function on this domain resolves.
-		if ip := s.DB.Setting("server_ip"); ip != "" {
-			s.ensureZoneRecord(zoneID, "*."+system.FunctionSubdomain, "A", ip)
+		// Publish wildcard A/AAAA records so every function on this domain resolves.
+		if s.DB.Setting("server_ip") != "" || s.DB.Setting("server_ipv6") != "" {
+			s.ensureAddrRecords(zoneID, "*."+system.FunctionSubdomain)
 			if err := s.writeZoneFile(zoneID); err != nil {
 				s.fail(w, "write zone", err)
 				return
@@ -359,8 +359,8 @@ func (s *Server) handleFunctionUpdate(w http.ResponseWriter, r *http.Request, u 
 		s.maybeRemoveFunctionWildcard(u, old.BaseDomain)
 	}
 	if eff.Trigger == system.TriggerURL && newZoned {
-		if ip := s.DB.Setting("server_ip"); ip != "" {
-			s.ensureZoneRecord(newZoneID, "*."+system.FunctionSubdomain, "A", ip)
+		if s.DB.Setting("server_ip") != "" || s.DB.Setting("server_ipv6") != "" {
+			s.ensureAddrRecords(newZoneID, "*."+system.FunctionSubdomain)
 			if err := s.writeZoneFile(newZoneID); err != nil {
 				s.fail(w, "write zone", err)
 				return
@@ -506,7 +506,7 @@ func (s *Server) maybeRemoveFunctionWildcard(u *models.User, base string) {
 	if !ok {
 		return
 	}
-	s.DB.Exec(`DELETE FROM dns_records WHERE zone_id = ? AND name = ? AND type = 'A'`,
+	s.DB.Exec(`DELETE FROM dns_records WHERE zone_id = ? AND name = ? AND type IN ('A','AAAA')`,
 		zoneID, "*."+system.FunctionSubdomain)
 	s.writeZoneFile(zoneID)
 }

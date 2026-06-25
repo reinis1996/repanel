@@ -27,17 +27,24 @@ func ParseSlaveIPs(s string) []string {
 
 // DefaultZoneRecords returns the records a freshly created domain gets,
 // equivalent to the default DNS template in Plesk/DirectAdmin.
-func DefaultZoneRecords(domain, serverIP string) []models.DNSRecord {
+func DefaultZoneRecords(domain, serverIP, serverIPv6 string) []models.DNSRecord {
 	if serverIP == "" {
 		serverIP = "127.0.0.1"
 	}
-	return []models.DNSRecord{
+	recs := []models.DNSRecord{
 		{Name: "@", Type: "A", Value: serverIP, TTL: 3600},
 		{Name: "www", Type: "CNAME", Value: domain + ".", TTL: 3600},
 		{Name: "mail", Type: "A", Value: serverIP, TTL: 3600},
 		{Name: "@", Type: "MX", Value: "mail." + domain + ".", TTL: 3600, Priority: 10},
 		{Name: "@", Type: "TXT", Value: "v=spf1 a mx ~all", TTL: 3600},
 	}
+	if serverIPv6 != "" {
+		recs = append(recs,
+			models.DNSRecord{Name: "@", Type: "AAAA", Value: serverIPv6, TTL: 3600},
+			models.DNSRecord{Name: "mail", Type: "AAAA", Value: serverIPv6, TTL: 3600},
+		)
+	}
+	return recs
 }
 
 // WriteZone renders a BIND zone file and registers it in

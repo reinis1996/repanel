@@ -191,6 +191,19 @@ func (s *Server) ensureZoneRecord(zoneID int64, name, rtype, value string) {
 	}
 }
 
+// ensureAddrRecords publishes the A (server_ip) and, when configured, AAAA
+// (server_ipv6) address records for name in the given zone. Used for every
+// auto-created host (subdomains, webmail, function wildcards) so they resolve
+// over both IPv4 and IPv6.
+func (s *Server) ensureAddrRecords(zoneID int64, name string) {
+	if ip := s.DB.Setting("server_ip"); ip != "" {
+		s.ensureZoneRecord(zoneID, name, "A", ip)
+	}
+	if ip := s.DB.Setting("server_ipv6"); ip != "" {
+		s.ensureZoneRecord(zoneID, name, "AAAA", ip)
+	}
+}
+
 // ensureSPF adds a default SPF record at the apex when the zone has none.
 func (s *Server) ensureSPF(zoneID int64) {
 	var n int

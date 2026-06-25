@@ -7,6 +7,7 @@ type SettingsMap = Record<string, string>
 
 const FIELDS: { key: string; label: string; hint: string; placeholder?: string; options?: [string, string][] }[] = [
   { key: 'server_ip', label: 'Server public IP', hint: 'Default A record for new DNS zones', placeholder: '203.0.113.10' },
+  { key: 'server_ipv6', label: 'Server public IPv6', hint: 'Optional — adds AAAA records to new DNS zones', placeholder: '2001:db8::1' },
   { key: 'panel_hostname', label: 'Panel hostname', hint: 'FQDN of this server', placeholder: 'panel.example.com' },
   { key: 'ns1', label: 'Primary nameserver', hint: 'Used in SOA/NS records', placeholder: 'ns1.example.com' },
   { key: 'ns2', label: 'Secondary nameserver', hint: 'Optional — added as a second NS record on every zone', placeholder: 'ns2.example.com' },

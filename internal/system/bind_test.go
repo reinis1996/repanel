@@ -9,6 +9,32 @@ import (
 	"github.com/reinis1996/repanel/internal/models"
 )
 
+func TestDefaultZoneRecords(t *testing.T) {
+	countAAAA := func(recs []models.DNSRecord) int {
+		n := 0
+		for _, r := range recs {
+			if r.Type == "AAAA" {
+				n++
+			}
+		}
+		return n
+	}
+	// No IPv6 configured: no AAAA records.
+	if got := countAAAA(DefaultZoneRecords("example.com", "203.0.113.10", "")); got != 0 {
+		t.Errorf("no server_ipv6 should yield 0 AAAA records, got %d", got)
+	}
+	// IPv6 configured: @ and mail get AAAA records.
+	recs := DefaultZoneRecords("example.com", "203.0.113.10", "2001:db8::1")
+	if got := countAAAA(recs); got != 2 {
+		t.Errorf("server_ipv6 should yield 2 AAAA records (@ and mail), got %d", got)
+	}
+	for _, r := range recs {
+		if r.Type == "AAAA" && r.Value != "2001:db8::1" {
+			t.Errorf("AAAA value = %q, want 2001:db8::1", r.Value)
+		}
+	}
+}
+
 func TestParseSlaveIPs(t *testing.T) {
 	got := ParseSlaveIPs("198.51.100.2, 203.0.113.9 not-an-ip\t2001:db8::1")
 	want := []string{"198.51.100.2", "203.0.113.9", "2001:db8::1"}

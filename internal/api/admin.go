@@ -199,7 +199,7 @@ func (s *Server) handleFirewallToggle(w http.ResponseWriter, r *http.Request, _ 
 
 // ---- settings ----
 
-var editableSettings = []string{"server_ip", "ns1", "ns2", "admin_email", "panel_hostname", "resolver_dns", "backup_schedule", "backup_keep", "slave_dns",
+var editableSettings = []string{"server_ip", "server_ipv6", "ns1", "ns2", "admin_email", "panel_hostname", "resolver_dns", "backup_schedule", "backup_keep", "slave_dns",
 	"alerts_enabled", "alert_email", "alert_webhook", "alert_disk_pct", "alert_cert_days",
 	"brand_name", "brand_color", "brand_logo"}
 
@@ -321,6 +321,12 @@ func settingError(key, val string) string {
 	case "server_ip":
 		if val != "" && net.ParseIP(val) == nil {
 			return "must be a valid IP address"
+		}
+	case "server_ipv6":
+		if val != "" {
+			if ip := net.ParseIP(val); ip == nil || ip.To4() != nil {
+				return "must be a valid IPv6 address"
+			}
 		}
 	case "ns1", "ns2", "panel_hostname":
 		if val != "" && !isHostname(val) {
