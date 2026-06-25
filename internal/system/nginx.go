@@ -180,7 +180,7 @@ listen.group = www-data
 pm = ondemand
 pm.max_children = 10
 pm.process_idle_timeout = 30s
-php_admin_value[open_basedir] = {{.DocumentRoot}}:/tmp
+php_admin_value[open_basedir] = {{.OpenBasedir}}:/tmp
 {{.PHPSettings}}
 {{- if .PHPExtra}}
 ; --- Custom directives (RePanel) ---
@@ -264,16 +264,32 @@ func indentConfig(s, indent string) string {
 // nginxConfDir is where the panel writes its per-domain nginx server blocks.
 func nginxConfDir(nginxDir string) string { return filepath.Join(nginxDir, "repanel.d") }
 
+// webSpaceBase returns the per-domain web-space directory used as the PHP
+// open_basedir jail: the <webroot>/<sysUser>/<domain> directory. This is wider
+// than the document root so an app whose docroot is a subfolder (e.g. Laravel's
+// public/) can still reach its vendor/, storage/ and .env above it, while
+// staying isolated from other domains. Falls back to the document root when the
+// expected layout isn't found.
+func webSpaceBase(docRoot, sysUser string) string {
+	parts := strings.Split(docRoot, "/")
+	for i, p := range parts {
+		if p == sysUser && i+1 < len(parts) {
+			return strings.Join(parts[:i+2], "/")
+		}
+	}
+	return docRoot
+}
+
 // renderPHPPool builds the FPM pool config for a domain.
 func renderPHPPool(d models.Domain, sysUser string) (string, error) {
 	var pb strings.Builder
 	err := phpPoolTemplate.Execute(&pb, map[string]string{
-		"PoolName":     poolName(d.Name),
-		"SysUser":      sysUser,
-		"PHPSock":      phpSocket(d),
-		"DocumentRoot": d.DocumentRoot,
-		"PHPSettings":  RenderPHPSettings(d.PHPSettings),
-		"PHPExtra":     indentConfig(d.PHPConf, ""),
+		"PoolName":    poolName(d.Name),
+		"SysUser":     sysUser,
+		"PHPSock":     phpSocket(d),
+		"OpenBasedir": webSpaceBase(d.DocumentRoot, sysUser),
+		"PHPSettings": RenderPHPSettings(d.PHPSettings),
+		"PHPExtra":    indentConfig(d.PHPConf, ""),
 	})
 	return pb.String(), err
 }

@@ -109,6 +109,7 @@ func (s *Server) Routes(mux *http.ServeMux) {
 	mux.Handle("POST /api/domains/{id}/php", s.perm(models.ModuleDomains, s.handleDomainPHP))
 	mux.Handle("POST /api/domains/{id}/runtime", s.perm(models.ModuleDomains, s.handleDomainRuntime))
 	mux.Handle("POST /api/domains/{id}/webserver", s.perm(models.ModuleDomains, s.handleDomainWebMode))
+	mux.Handle("POST /api/domains/{id}/docroot", s.perm(models.ModuleDomains, s.handleDomainDocRoot))
 	// Domain forwarding/redirect and owner-facing structured PHP settings.
 	mux.Handle("POST /api/domains/{id}/redirect", s.perm(models.ModuleDomains, s.handleDomainRedirect))
 	mux.Handle("POST /api/domains/{id}/aliases", s.perm(models.ModuleDomains, s.handleDomainAliases))

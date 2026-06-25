@@ -641,6 +641,63 @@ func (s *Server) handleDomainWebMode(w http.ResponseWriter, r *http.Request, u *
 	s.json(w, d)
 }
 
+// handleDomainDocRoot changes a site's document root so an app that serves from
+// a subfolder (e.g. Laravel's public/) can be the web root. The new root must
+// live inside the domain's own web space (/<webroot>/<sysuser>/<domain>/…);
+// anything outside is rejected. Aliases (which share their parent's root) and
+// Node apps (which use the app directory) are not eligible.
+func (s *Server) handleDomainDocRoot(w http.ResponseWriter, r *http.Request, u *models.User) {
+	d, err := s.getDomainScoped(u, pathID(r, "id"))
+	if err != nil {
+		s.err(w, http.StatusNotFound, err.Error())
+		return
+	}
+	if d.Kind == "alias" {
+		s.err(w, http.StatusBadRequest, "an alias shares its parent's document root")
+		return
+	}
+	if d.Runtime == "node" {
+		s.err(w, http.StatusBadRequest, "Node apps are served from their app directory, not a document root")
+		return
+	}
+	req, err := decode[struct {
+		DocumentRoot string `json:"document_root"`
+	}](r)
+	if err != nil {
+		s.err(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	sysUser, err := s.sysUserForPanelUser(d.UserID)
+	if err != nil {
+		s.fail(w, "provision system user", err)
+		return
+	}
+	base := filepath.Join(s.Cfg.WebRoot, sysUser, d.Name)
+	root, err := system.ResolveDocRoot(base, req.DocumentRoot)
+	if err != nil {
+		s.err(w, http.StatusBadRequest, "document root must be a folder inside "+base)
+		return
+	}
+	if err := system.EnsureDocRoot(root, sysUser, d.Name); err != nil {
+		s.fail(w, "create docroot", err)
+		return
+	}
+	d.DocumentRoot = root
+	if _, err := s.DB.Exec(`UPDATE domains SET document_root = ? WHERE id = ?`, root, d.ID); err != nil {
+		s.fail(w, "update domain", err)
+		return
+	}
+	if d.Suspended {
+		s.json(w, d)
+		return
+	}
+	if err := s.rewriteVhost(*d); err != nil {
+		s.fail(w, "rewrite vhost", err)
+		return
+	}
+	s.json(w, d)
+}
+
 func boolInt(b bool) int {
 	if b {
 		return 1

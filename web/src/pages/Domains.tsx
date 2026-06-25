@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Lock, LockOpen, Package, Loader2, ExternalLink, Trash2, Boxes, RefreshCw, Power, FileCode2, BarChart3, Shield, ShieldCheck, CornerUpRight, SlidersHorizontal, FolderLock, Globe } from 'lucide-react'
+import { Plus, Lock, LockOpen, Package, Loader2, ExternalLink, Trash2, Boxes, RefreshCw, Power, FileCode2, BarChart3, Shield, ShieldCheck, CornerUpRight, SlidersHorizontal, FolderLock, Globe, FolderTree } from 'lucide-react'
 import { api, useFetch, formatDate } from '../api'
 import type { Domain, User, App, WebServerInfo, NodeApp, SiteConfig, WebStats, WAFStatus, PHPSettings, ProtectedDir, CatalogApp } from '../types'
 import { useAuth } from '../App'
@@ -58,6 +58,7 @@ export default function Domains() {
   const [aliasFor, setAliasFor] = useState<Domain | null>(null)
   const [phpFor, setPhpFor] = useState<Domain | null>(null)
   const [protectedFor, setProtectedFor] = useState<Domain | null>(null)
+  const [docRootFor, setDocRootFor] = useState<Domain | null>(null)
   const [owner, setOwner] = useState(0)
   const [createDNS, setCreateDNS] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -416,6 +417,15 @@ export default function Domains() {
                       <FolderLock size={16} />
                     </button>
                   )}
+                  {d.kind !== 'alias' && !d.redirect_url && d.runtime !== 'node' && (
+                    <button
+                      className="text-slate-400 hover:text-brand-600 cursor-pointer mr-3 align-middle"
+                      title="Document root"
+                      onClick={() => setDocRootFor(d)}
+                    >
+                      <FolderTree size={16} />
+                    </button>
+                  )}
                   {isAdmin && (
                     <button
                       className="text-slate-400 hover:text-brand-600 cursor-pointer mr-3 align-middle"
@@ -656,7 +666,45 @@ export default function Domains() {
       {phpFor && <PHPSettingsModal domain={phpFor} onClose={() => setPhpFor(null)} />}
 
       {protectedFor && <ProtectedModal domain={protectedFor} onClose={() => setProtectedFor(null)} />}
+
+      {docRootFor && <DocRootModal domain={docRootFor} onClose={() => setDocRootFor(null)} onSaved={reload} />}
     </div>
+  )
+}
+
+function DocRootModal({ domain, onClose, onSaved }: { domain: Domain; onClose: () => void; onSaved: () => void }) {
+  const [root, setRoot] = useState(domain.document_root)
+  const [busy, setBusy] = useState(false)
+
+  const save = async () => {
+    setBusy(true)
+    try {
+      await api.post(`/api/domains/${domain.id}/docroot`, { document_root: root })
+      toast('Document root updated')
+      onSaved()
+      onClose()
+    } catch (e) {
+      toast((e as Error).message, 'err')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal open title={`Document root — ${domain.name}`} onClose={onClose}>
+      <p className="text-sm text-slate-500 mb-4">
+        The folder served as the web root. Point it at a subfolder to run apps that ship a separate public directory — e.g.
+        a Laravel app's <code>laravel/public</code>. It must stay inside this site's directory; the folder is created if it
+        doesn't exist.
+      </p>
+      <Field label="Document root" hint="Absolute path inside the site, or a path relative to it">
+        <Input value={root} onChange={(e) => setRoot(e.target.value)} spellCheck={false} />
+      </Field>
+      <div className="flex justify-end gap-2 mt-2">
+        <Btn type="button" variant="secondary" onClick={onClose}>Cancel</Btn>
+        <Btn type="button" disabled={busy || !root.trim()} onClick={save}>{busy ? 'Saving…' : 'Save'}</Btn>
+      </div>
+    </Modal>
   )
 }
 

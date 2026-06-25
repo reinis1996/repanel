@@ -60,6 +60,26 @@ func ResolveJailed(jail, rel string) (string, error) {
 	return p, nil
 }
 
+// ResolveDocRoot validates a requested document root for a domain whose web
+// space is rooted at base. The input may be an absolute path (which must sit
+// inside base) or a path relative to base. Returns the cleaned absolute path,
+// rejecting anything that escapes the web space.
+func ResolveDocRoot(base, in string) (string, error) {
+	in = strings.TrimSpace(in)
+	if in == "" {
+		return "", fmt.Errorf("document root cannot be empty")
+	}
+	rel := in
+	if filepath.IsAbs(in) {
+		r, err := filepath.Rel(base, filepath.Clean(in))
+		if err != nil {
+			return "", fmt.Errorf("invalid document root")
+		}
+		rel = r
+	}
+	return ResolveJailed(base, rel)
+}
+
 func ListDir(jail, rel string) ([]FileEntry, error) {
 	dir, err := ResolveJailed(jail, rel)
 	if err != nil {
