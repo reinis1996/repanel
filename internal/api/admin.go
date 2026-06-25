@@ -120,6 +120,16 @@ func (s *Server) panelPort() string {
 	return strings.TrimPrefix(s.Cfg.ListenAddr, ":")
 }
 
+// SyncResolvers re-applies the configured system DNS resolvers at startup, so the
+// operator's choice survives a reboot or dhcpcd lease renewal. A no-op when unset.
+func (s *Server) SyncResolvers() {
+	if v := strings.TrimSpace(s.DB.Setting("resolver_dns")); v != "" {
+		if err := system.SetResolvers(v); err != nil {
+			log.Printf("set resolvers: %v", err)
+		}
+	}
+}
+
 // SeedFirewall opens the panel's standard stack ports (web, mail, DNS, FTP, SSH
 // and the panel) and enables ufw. It runs once — on first start after install —
 // recording the rules in panel state so they appear on the Firewall page. It is
@@ -189,7 +199,7 @@ func (s *Server) handleFirewallToggle(w http.ResponseWriter, r *http.Request, _ 
 
 // ---- settings ----
 
-var editableSettings = []string{"server_ip", "ns1", "ns2", "admin_email", "panel_hostname", "backup_schedule", "backup_keep", "slave_dns",
+var editableSettings = []string{"server_ip", "ns1", "ns2", "admin_email", "panel_hostname", "resolver_dns", "backup_schedule", "backup_keep", "slave_dns",
 	"alerts_enabled", "alert_email", "alert_webhook", "alert_disk_pct", "alert_cert_days",
 	"brand_name", "brand_color", "brand_logo"}
 
@@ -213,6 +223,7 @@ func (s *Server) handleSettingsSet(w http.ResponseWriter, r *http.Request, _ *mo
 	}
 	dnsChanged := false
 	hostnameChanged := false
+	resolverChanged := false
 	for _, k := range editableSettings {
 		v, ok := req[k]
 		if !ok {
@@ -225,6 +236,9 @@ func (s *Server) handleSettingsSet(w http.ResponseWriter, r *http.Request, _ *mo
 		}
 		if k == "panel_hostname" && v != s.DB.Setting(k) {
 			hostnameChanged = true
+		}
+		if k == "resolver_dns" && v != s.DB.Setting(k) {
+			resolverChanged = true
 		}
 		if k == "slave_dns" {
 			// Normalize to the valid IPs so an invalid entry can't silently
@@ -259,6 +273,12 @@ func (s *Server) handleSettingsSet(w http.ResponseWriter, r *http.Request, _ *mo
 				s.fail(w, "set mail hostname", err)
 				return
 			}
+		}
+	}
+	if resolverChanged {
+		if err := system.SetResolvers(s.DB.Setting("resolver_dns")); err != nil {
+			s.fail(w, "set resolvers", err)
+			return
 		}
 	}
 	s.json(w, map[string]bool{"ok": true})
@@ -304,6 +324,13 @@ func settingError(key, val string) string {
 	case "ns1", "ns2", "panel_hostname":
 		if val != "" && !isHostname(val) {
 			return "must be a valid hostname"
+		}
+	case "resolver_dns":
+		if val != "" {
+			fields := strings.FieldsFunc(val, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' })
+			if len(system.ParseResolverIPs(val)) != len(fields) {
+				return "must be a comma-separated list of IP addresses"
+			}
 		}
 	case "admin_email", "alert_email":
 		if val != "" && !isEmail(val) {

@@ -18,6 +18,12 @@ const FIELDS: { key: string; label: string; hint: string; placeholder?: string; 
   },
   { key: 'admin_email', label: 'Admin email', hint: "Used for Let's Encrypt and zone SOA", placeholder: 'admin@example.com' },
   {
+    key: 'resolver_dns',
+    label: 'System DNS resolvers',
+    hint: "The server's own DNS resolvers (writes /etc/resolv.conf). Leave blank to keep the DHCP-provided ones.",
+    placeholder: '1.1.1.1, 8.8.8.8',
+  },
+  {
     key: 'backup_schedule',
     label: 'Automatic backups',
     hint: 'Runs around 03:00 server time for every active account',
