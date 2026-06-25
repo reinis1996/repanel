@@ -139,6 +139,15 @@ func (s *Server) handleDKIMDisable(w http.ResponseWriter, r *http.Request, u *mo
 	s.json(w, map[string]bool{"ok": true})
 }
 
+// SyncDKIM rebuilds OpenDKIM's tables from panel state at startup, so changes to
+// the generated config (e.g. sub-domain signing) take effect without re-toggling
+// DKIM per domain. A no-op when OpenDKIM isn't installed.
+func (s *Server) SyncDKIM() {
+	if err := s.rebuildDKIM(); err != nil {
+		s.fail0("sync dkim", err)
+	}
+}
+
 // rebuildDKIM regenerates OpenDKIM's tables from every enabled domain.
 func (s *Server) rebuildDKIM() error {
 	rows, err := s.DB.Query(`SELECT d.name, k.selector, k.private_pem

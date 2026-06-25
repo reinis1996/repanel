@@ -91,6 +91,11 @@ func RebuildDKIM(domains []DKIMDomain) error {
 		}
 		fmt.Fprintf(&keyTable, "%s._domainkey.%s %s:%s:%s\n", d.Selector, d.Domain, d.Domain, d.Selector, keyPath)
 		fmt.Fprintf(&signTable, "*@%s %s._domainkey.%s\n", d.Domain, d.Selector, d.Domain)
+		// Also sign mail from sub-domains (e.g. the server's own hostname,
+		// repanel.<domain>, used for bounces and system mail) with this domain's
+		// key. d=<domain> on a From of *.<domain> is DMARC-aligned under relaxed
+		// alignment, so that mail passes instead of going out unsigned.
+		fmt.Fprintf(&signTable, "*@*.%s %s._domainkey.%s\n", d.Domain, d.Selector, d.Domain)
 	}
 	if err := os.WriteFile(openDKIMKeyTable, []byte(keyTable.String()), 0o640); err != nil {
 		return err

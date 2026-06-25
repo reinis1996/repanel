@@ -57,6 +57,7 @@ func main() {
 	}()
 	go srv.SyncAntiSpam()     // apply per-domain spam settings (no-op if rspamd absent)
 	go srv.SyncMailDelivery() // wire up LMTP delivery + sieve/quota (no-op if sieve absent)
+	go srv.SyncDKIM()         // rebuild OpenDKIM tables (picks up sub-domain signing)
 	mux := http.NewServeMux()
 	srv.Routes(mux)
 	mux.Handle("/", spaHandler())
