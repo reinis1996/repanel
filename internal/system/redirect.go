@@ -27,7 +27,7 @@ func redirectVhostNginx(d models.Domain, ssl bool, certPath, keyPath string) str
 	fmt.Fprintf(&b, "    location /.well-known/acme-challenge/ { root %s; }\n", d.DocumentRoot)
 	fmt.Fprintf(&b, "    location / { return %d %s$request_uri; }\n}\n", code, target)
 	if ssl && certPath != "" {
-		fmt.Fprintf(&b, "\nserver {\n    listen 443 ssl;\n    listen [::]:443 ssl;\n    http2 on;\n    server_name %s;\n", names)
+		fmt.Fprintf(&b, "\nserver {\n    listen 443 ssl http2;\n    listen [::]:443 ssl http2;\n    server_name %s;\n", names)
 		fmt.Fprintf(&b, "    ssl_certificate     %s;\n    ssl_certificate_key %s;\n", certPath, keyPath)
 		fmt.Fprintf(&b, "    location / { return %d %s$request_uri; }\n}\n", code, target)
 	}

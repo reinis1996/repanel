@@ -30,9 +30,8 @@ server {
 }
 
 server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name {{.ServerNames}};
 
     ssl_certificate     {{.CertPath}};
@@ -93,9 +92,8 @@ server {
 }
 
 server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name {{.ServerNames}};
 
     ssl_certificate     {{.CertPath}};
@@ -372,9 +370,8 @@ server {
 }
 
 server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name {{.ServerNames}};
 
     ssl_certificate     {{.CertPath}};

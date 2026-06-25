@@ -96,7 +96,7 @@ apt-get install -y -qq \
   mariadb-server bind9 bind9utils \
   postfix postfix-pcre dovecot-imapd dovecot-pop3d dovecot-lmtpd dovecot-sieve \
   opendkim opendkim-tools \
-  proftpd-basic certbot ufw fail2ban curl ca-certificates >/dev/null
+  proftpd-basic certbot ufw fail2ban rsyslog curl ca-certificates >/dev/null
 
 # Web server packages depend on the chosen stack.
 case "$WEB_SERVER" in

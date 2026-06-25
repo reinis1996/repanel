@@ -364,9 +364,8 @@ server {
 `)
 	if certPath != "" && keyPath != "" {
 		fmt.Fprintf(&sb, `server {
-    listen 443 ssl default_server;
-    listen [::]:443 ssl default_server;
-    http2 on;
+    listen 443 ssl http2 default_server;
+    listen [::]:443 ssl http2 default_server;
     server_name _;
     ssl_certificate     %s;
     ssl_certificate_key %s;
