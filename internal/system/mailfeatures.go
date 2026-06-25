@@ -270,7 +270,7 @@ mail_gid = vmail
 first_valid_uid = 5000
 last_valid_uid = 5000
 
-protocols = imap pop3 lmtp sieve
+protocols = imap pop3 lmtp
 mail_plugins = $mail_plugins quota
 
 passdb {
