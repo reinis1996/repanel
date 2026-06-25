@@ -15,7 +15,7 @@ func (s *Server) handleDomainList(w http.ResponseWriter, r *http.Request, u *mod
 	where, args := scopeWhere(u, "d.user_id")
 	rows, err := s.DB.Query(`SELECT d.id, d.user_id, d.name, d.document_root, d.php_version,
 		d.runtime, d.node_version, d.node_port, d.ssl, d.suspended, d.web_mode, d.waf_enabled, d.created_at, u.username,
-		d.kind, d.parent_id, d.redirect_url, d.redirect_code, COALESCE(p.name, '')
+		d.kind, d.parent_id, d.redirect_url, d.redirect_code, d.aliases, COALESCE(p.name, '')
 		FROM domains d JOIN users u ON u.id = d.user_id
 		LEFT JOIN domains p ON p.id = d.parent_id
 		WHERE `+where+` ORDER BY COALESCE(NULLIF(p.name,''), d.name), d.kind, d.name`, args...)
@@ -29,10 +29,12 @@ func (s *Server) handleDomainList(w http.ResponseWriter, r *http.Request, u *mod
 	for rows.Next() {
 		var d models.Domain
 		var ssl, susp, waf int
+		var aliases string
 		if err := rows.Scan(&d.ID, &d.UserID, &d.Name, &d.DocumentRoot, &d.PHPVersion,
 			&d.Runtime, &d.NodeVersion, &d.NodePort, &ssl, &susp, &d.WebMode, &waf, &d.CreatedAt, &d.Owner,
-			&d.Kind, &d.ParentID, &d.RedirectURL, &d.RedirectCode, &d.Parent); err == nil {
+			&d.Kind, &d.ParentID, &d.RedirectURL, &d.RedirectCode, &aliases, &d.Parent); err == nil {
 			d.SSL, d.Suspended, d.WAFEnabled = ssl != 0, susp != 0, waf != 0
+			d.Aliases = strings.Fields(aliases)
 			d.WebMode = ws.NormalizeMode(d.WebMode)
 			out = append(out, d)
 		}
@@ -55,13 +57,15 @@ func (s *Server) getDomainByID(id int64) (*models.Domain, error) {
 func (s *Server) getDomainWhere(where string, args ...any) (*models.Domain, error) {
 	var d models.Domain
 	var ssl, susp, waf int
-	err := s.DB.QueryRow(`SELECT id, user_id, name, document_root, php_version, runtime, node_version, node_port, ssl, suspended, web_mode, created_at, nginx_conf, apache_conf, php_conf, waf_enabled, waf_mode, waf_rules, kind, parent_id, redirect_url, redirect_code, php_settings
+	var aliases string
+	err := s.DB.QueryRow(`SELECT id, user_id, name, document_root, php_version, runtime, node_version, node_port, ssl, suspended, web_mode, created_at, nginx_conf, apache_conf, php_conf, waf_enabled, waf_mode, waf_rules, kind, parent_id, redirect_url, redirect_code, php_settings, aliases
 		FROM domains WHERE id = ? AND `+where, args...).
-		Scan(&d.ID, &d.UserID, &d.Name, &d.DocumentRoot, &d.PHPVersion, &d.Runtime, &d.NodeVersion, &d.NodePort, &ssl, &susp, &d.WebMode, &d.CreatedAt, &d.NginxConf, &d.ApacheConf, &d.PHPConf, &waf, &d.WAFMode, &d.WAFRules, &d.Kind, &d.ParentID, &d.RedirectURL, &d.RedirectCode, &d.PHPSettings)
+		Scan(&d.ID, &d.UserID, &d.Name, &d.DocumentRoot, &d.PHPVersion, &d.Runtime, &d.NodeVersion, &d.NodePort, &ssl, &susp, &d.WebMode, &d.CreatedAt, &d.NginxConf, &d.ApacheConf, &d.PHPConf, &waf, &d.WAFMode, &d.WAFRules, &d.Kind, &d.ParentID, &d.RedirectURL, &d.RedirectCode, &d.PHPSettings, &aliases)
 	d.WAFEnabled = waf != 0
 	if err != nil {
 		return nil, fmt.Errorf("domain not found")
 	}
+	d.Aliases = strings.Fields(aliases)
 	d.SSL, d.Suspended = ssl != 0, susp != 0
 	d.WebMode = s.webServer().NormalizeMode(d.WebMode)
 	s.loadDomainProtected(&d)
@@ -138,6 +142,10 @@ func (s *Server) handleDomainCreate(w http.ResponseWriter, r *http.Request, u *m
 		Kind      string `json:"kind"`       // primary (default) | subdomain | alias
 		ParentID  int64  `json:"parent_id"`  // owning domain for subdomain/alias
 		AliasMode string `json:"alias_mode"` // mirror (default) | redirect — alias only
+		// Extra hostnames pointing at the same site. nil (omitted) defaults to
+		// www.<name> for a primary domain; an explicit (possibly empty) list is
+		// used as-is, so a client can drop www or add its own.
+		Aliases *[]string `json:"aliases"`
 	}](r)
 	if err != nil {
 		s.err(w, http.StatusBadRequest, "invalid request body")
@@ -206,9 +214,24 @@ func (s *Server) handleDomainCreate(w http.ResponseWriter, r *http.Request, u *m
 		s.fail(w, "provision system user", err)
 		return
 	}
+	// Resolve alternative hostnames. Omitted (nil) defaults to www.<name> for a
+	// primary domain only — subdomains/aliases previously got a www. prefix that
+	// rarely resolves, which is exactly what broke SSL issuance.
+	var aliasIn []string
+	if req.Aliases != nil {
+		aliasIn = *req.Aliases
+	} else if kind == "primary" {
+		aliasIn = []string{"www." + name}
+	}
+	aliases, msg := s.cleanAliases(ownerID, name, aliasIn)
+	if msg != "" {
+		s.err(w, http.StatusBadRequest, msg)
+		return
+	}
+
 	webMode := s.webServer().NormalizeMode(req.WebMode)
 	phpVersion := system.PHPVersions()[0]
-	d := models.Domain{UserID: ownerID, Name: name, WebMode: webMode, Runtime: "php", PHPVersion: phpVersion, Kind: kind, ParentID: req.ParentID}
+	d := models.Domain{UserID: ownerID, Name: name, WebMode: webMode, Runtime: "php", PHPVersion: phpVersion, Kind: kind, ParentID: req.ParentID, Aliases: aliases}
 
 	// An alias in redirect mode forwards to its parent; in mirror mode it serves
 	// the parent's document root. A subdomain/primary gets its own document root.
@@ -246,9 +269,9 @@ func (s *Server) handleDomainCreate(w http.ResponseWriter, r *http.Request, u *m
 		}
 	}
 
-	res, err := s.DB.Exec(`INSERT INTO domains(user_id,name,document_root,php_version,web_mode,runtime,node_version,node_port,node_startup,kind,parent_id,redirect_url,redirect_code)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-		ownerID, name, d.DocumentRoot, d.PHPVersion, webMode, d.Runtime, d.NodeVersion, d.NodePort, "app.js", kind, req.ParentID, d.RedirectURL, d.RedirectCode)
+	res, err := s.DB.Exec(`INSERT INTO domains(user_id,name,document_root,php_version,web_mode,runtime,node_version,node_port,node_startup,kind,parent_id,redirect_url,redirect_code,aliases)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		ownerID, name, d.DocumentRoot, d.PHPVersion, webMode, d.Runtime, d.NodeVersion, d.NodePort, "app.js", kind, req.ParentID, d.RedirectURL, d.RedirectCode, strings.Join(aliases, " "))
 	if err != nil {
 		s.err(w, http.StatusConflict, "domain already exists")
 		return
@@ -287,6 +310,35 @@ func (s *Server) handleDomainCreate(w http.ResponseWriter, r *http.Request, u *m
 		}
 	}
 	s.json(w, d)
+}
+
+// cleanAliases lowercases, trims, dedupes and validates alternative hostnames,
+// dropping blanks and the domain's own name. It rejects an alias that overlaps a
+// domain owned by another account (same tenant-isolation rule as the primary
+// name; see SECURITY_AUDIT F-07). Returns a client error message on the first
+// bad entry, else "".
+func (s *Server) cleanAliases(ownerID int64, name string, in []string) ([]string, string) {
+	seen := map[string]bool{name: true}
+	out := []string{}
+	for _, a := range in {
+		a = strings.ToLower(strings.TrimSpace(a))
+		if a == "" || seen[a] {
+			continue
+		}
+		if !validDomainName(a) {
+			return nil, "invalid alternative domain: " + a
+		}
+		var conflict int
+		s.DB.QueryRow(`SELECT COUNT(*) FROM domains
+			WHERE user_id != ? AND (name = ? OR ? LIKE '%.' || name OR name LIKE '%.' || ?)`,
+			ownerID, a, a, a).Scan(&conflict)
+		if conflict > 0 {
+			return nil, "alternative domain overlaps a domain owned by another account: " + a
+		}
+		seen[a] = true
+		out = append(out, a)
+	}
+	return out, ""
 }
 
 // domainLimitReached returns a message if the owner is at their domain cap, else

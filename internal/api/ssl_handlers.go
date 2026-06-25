@@ -60,11 +60,12 @@ func (s *Server) handleCertIssue(w http.ResponseWriter, r *http.Request, u *mode
 	switch req.Method {
 	case "letsencrypt":
 		issuer = "letsencrypt"
-		// Cover apex + www, plus webmail.<domain> when webmail is enabled so the
-		// same certificate secures the Roundcube vhost. The webmail vhost serves
-		// webmail.<domain>'s ACME challenge from this docroot, so make sure it is
-		// in place before certbot validates (it may not be on first issue).
-		hosts := []string{d.Name, "www." + d.Name}
+		// Cover the domain + its configured aliases (e.g. www), plus webmail.<domain>
+		// when webmail is enabled so the same certificate secures the Roundcube
+		// vhost. The webmail vhost serves webmail.<domain>'s ACME challenge from this
+		// docroot, so make sure it is in place before certbot validates (it may not
+		// be on first issue).
+		hosts := append([]string{d.Name}, d.Aliases...)
 		if s.domainWebmailEnabled(d.ID) {
 			hosts = append(hosts, "webmail."+d.Name)
 			s.rebuildWebmail()
@@ -92,7 +93,7 @@ func (s *Server) handleCertIssue(w http.ResponseWriter, r *http.Request, u *mode
 		}
 	case "self-signed":
 		issuer = "self-signed"
-		certPath, keyPath, notAfter, err = system.IssueSelfSigned(s.Cfg.DataDir, d.Name)
+		certPath, keyPath, notAfter, err = system.IssueSelfSigned(s.Cfg.DataDir, d.Name, d.Aliases...)
 	default:
 		s.err(w, http.StatusBadRequest, "unknown issuance method")
 		return

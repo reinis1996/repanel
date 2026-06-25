@@ -25,7 +25,9 @@ import (
 var apacheDirectTemplate = template.Must(template.New("apachedirect").Parse(`# Managed by RePanel — do not edit, changes will be overwritten.
 <VirtualHost *:80>
     ServerName {{.Name}}
-    ServerAlias www.{{.Name}}
+{{- if .AliasLine}}
+    ServerAlias {{.AliasLine}}
+{{- end}}
     DocumentRoot {{.DocumentRoot}}
 
     <Directory {{.DocumentRoot}}>
@@ -66,7 +68,9 @@ var apacheDirectTemplate = template.Must(template.New("apachedirect").Parse(`# M
 
 <VirtualHost *:443>
     ServerName {{.Name}}
-    ServerAlias www.{{.Name}}
+{{- if .AliasLine}}
+    ServerAlias {{.AliasLine}}
+{{- end}}
     DocumentRoot {{.DocumentRoot}}
 
     <Directory {{.DocumentRoot}}>
@@ -107,7 +111,9 @@ var apacheDirectTemplate = template.Must(template.New("apachedirect").Parse(`# M
 var apacheBackendTemplate = template.Must(template.New("apachebackend").Parse(`# Managed by RePanel — Apache backend behind nginx. Do not edit.
 <VirtualHost 127.0.0.1:{{.BackendPort}}>
     ServerName {{.Name}}
-    ServerAlias www.{{.Name}}
+{{- if .AliasLine}}
+    ServerAlias {{.AliasLine}}
+{{- end}}
     DocumentRoot {{.DocumentRoot}}
 
     <Directory {{.DocumentRoot}}>
@@ -142,6 +148,16 @@ var apacheBackendTemplate = template.Must(template.New("apachebackend").Parse(`#
 </VirtualHost>
 `))
 
+// apacheAliasLine renders the indented "ServerAlias ..." directive (with a
+// trailing newline) for a domain's alternative hostnames, or "" when it has
+// none. Used by the hand-built (non-template) Apache vhosts.
+func apacheAliasLine(d models.Domain) string {
+	if len(d.Aliases) == 0 {
+		return ""
+	}
+	return "    ServerAlias " + strings.Join(d.Aliases, " ") + "\n"
+}
+
 // apacheConfDir is where the panel writes its per-domain Apache vhosts. The
 // installer adds an IncludeOptional for it.
 func apacheConfDir(apacheDir string) string { return filepath.Join(apacheDir, "repanel.d") }
@@ -173,11 +189,10 @@ func writeApacheSuspended(apacheDir string, d models.Domain) error {
 	conf := fmt.Sprintf(`# Managed by RePanel — domain suspended
 <VirtualHost *:80>
     ServerName %s
-    ServerAlias www.%s
-    Redirect 503 /
+%s    Redirect 503 /
     ErrorDocument 503 "Site suspended"
 </VirtualHost>
-`, d.Name, d.Name)
+`, d.Name, apacheAliasLine(d))
 	confDir := apacheConfDir(apacheDir)
 	if err := os.MkdirAll(confDir, 0o755); err != nil {
 		return err

@@ -63,6 +63,44 @@ func (s *Server) handleDomainRedirect(w http.ResponseWriter, r *http.Request, u 
 	s.json(w, d)
 }
 
+// ---- alternative domains (aliases) ----
+
+// handleDomainAliases replaces a domain's alternative hostnames (extra
+// server_name / ServerAlias entries and certificate SAN hosts) and rebuilds the
+// vhost. The cert is not reissued here, so new aliases are only secured after
+// the owner re-runs SSL issuance.
+func (s *Server) handleDomainAliases(w http.ResponseWriter, r *http.Request, u *models.User) {
+	d, err := s.getDomainScoped(u, pathID(r, "id"))
+	if err != nil {
+		s.err(w, http.StatusNotFound, err.Error())
+		return
+	}
+	req, err := decode[struct {
+		Aliases []string `json:"aliases"`
+	}](r)
+	if err != nil {
+		s.err(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	aliases, msg := s.cleanAliases(d.UserID, d.Name, req.Aliases)
+	if msg != "" {
+		s.err(w, http.StatusBadRequest, msg)
+		return
+	}
+	if _, err := s.DB.Exec(`UPDATE domains SET aliases = ? WHERE id = ?`, strings.Join(aliases, " "), d.ID); err != nil {
+		s.fail(w, "update aliases", err)
+		return
+	}
+	d.Aliases = aliases
+	if !d.Suspended {
+		if err := s.rewriteVhost(*d); err != nil {
+			s.fail(w, "rewrite vhost", err)
+			return
+		}
+	}
+	s.json(w, d)
+}
+
 // ---- structured PHP settings ----
 
 func (s *Server) handleDomainPHPSettingsGet(w http.ResponseWriter, r *http.Request, u *models.User) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Lock, LockOpen, Package, Loader2, ExternalLink, Trash2, Boxes, RefreshCw, Power, FileCode2, BarChart3, Shield, ShieldCheck, CornerUpRight, SlidersHorizontal, FolderLock } from 'lucide-react'
+import { Plus, Lock, LockOpen, Package, Loader2, ExternalLink, Trash2, Boxes, RefreshCw, Power, FileCode2, BarChart3, Shield, ShieldCheck, CornerUpRight, SlidersHorizontal, FolderLock, Globe } from 'lucide-react'
 import { api, useFetch, formatDate } from '../api'
 import type { Domain, User, App, WebServerInfo, NodeApp, SiteConfig, WebStats, WAFStatus, PHPSettings, ProtectedDir, CatalogApp } from '../types'
 import { useAuth } from '../App'
@@ -45,12 +45,17 @@ export default function Domains() {
   const [webMode, setWebMode] = useState('')
   const [kind, setKind] = useState<'primary' | 'subdomain' | 'alias'>('primary')
   const [parentId, setParentId] = useState(0)
+  // Alternative hostnames (space/comma separated). Auto-filled with www.<name>
+  // for a primary domain until the user edits the field themselves.
+  const [aliases, setAliases] = useState('')
+  const [aliasesTouched, setAliasesTouched] = useState(false)
   const [aliasMode, setAliasMode] = useState<'mirror' | 'redirect'>('mirror')
   const [nodeFor, setNodeFor] = useState<Domain | null>(null)
   const [configFor, setConfigFor] = useState<Domain | null>(null)
   const [statsFor, setStatsFor] = useState<Domain | null>(null)
   const [wafFor, setWafFor] = useState<Domain | null>(null)
   const [redirectFor, setRedirectFor] = useState<Domain | null>(null)
+  const [aliasFor, setAliasFor] = useState<Domain | null>(null)
   const [phpFor, setPhpFor] = useState<Domain | null>(null)
   const [protectedFor, setProtectedFor] = useState<Domain | null>(null)
   const [owner, setOwner] = useState(0)
@@ -77,6 +82,17 @@ export default function Domains() {
     return () => clearInterval(t)
   }, [anyInstalling, apps.reload])
 
+  // The www.<name> default tracks the typed name until the user edits aliases.
+  const autoAlias = (n: string, k: typeof kind) => (k === 'primary' && n ? `www.${n}` : '')
+  const changeName = (v: string) => {
+    setName(v)
+    if (!aliasesTouched) setAliases(autoAlias(v, kind))
+  }
+  const changeKind = (k: typeof kind) => {
+    setKind(k)
+    if (!aliasesTouched) setAliases(autoAlias(name, k))
+  }
+
   const create = async (e: React.FormEvent) => {
     e.preventDefault()
     setBusy(true)
@@ -92,6 +108,7 @@ export default function Domains() {
         kind,
         parent_id: kind === 'primary' ? undefined : parentId || undefined,
         alias_mode: kind === 'alias' ? aliasMode : undefined,
+        aliases: aliases.split(/[\s,]+/).filter(Boolean),
       })
       toast(`${kind === 'primary' ? 'Domain' : kind} ${name} created`)
       setAddOpen(false)
@@ -100,6 +117,8 @@ export default function Domains() {
       setKind('primary')
       setParentId(0)
       setAliasMode('mirror')
+      setAliases('')
+      setAliasesTouched(false)
       reload()
     } catch (err) {
       toast((err as Error).message, 'err')
@@ -111,6 +130,9 @@ export default function Domains() {
   const openAdd = () => {
     setKind('primary')
     setParentId(0)
+    setName('')
+    setAliases('')
+    setAliasesTouched(false)
     setAddOpen(true)
   }
 
@@ -367,6 +389,15 @@ export default function Domains() {
                   >
                     <CornerUpRight size={16} />
                   </button>
+                  {d.kind !== 'alias' && (
+                    <button
+                      className="text-slate-400 hover:text-brand-600 cursor-pointer mr-3 align-middle"
+                      title="Alternative domains"
+                      onClick={() => setAliasFor(d)}
+                    >
+                      <Globe size={16} />
+                    </button>
+                  )}
                   {d.runtime === 'php' && !d.redirect_url && (
                     <button
                       className="text-slate-400 hover:text-brand-600 cursor-pointer mr-3 align-middle"
@@ -412,7 +443,7 @@ export default function Domains() {
       <Modal open={addOpen} title="Add Domain" onClose={() => setAddOpen(false)}>
         <form onSubmit={create}>
           <Field label="Type" hint="A primary domain, a subdomain of one you own, or a parked alias">
-            <Select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
+            <Select value={kind} onChange={(e) => changeKind(e.target.value as typeof kind)}>
               <option value="primary">Primary domain</option>
               <option value="subdomain" disabled={!primaryDomains.length}>Subdomain</option>
               <option value="alias" disabled={!primaryDomains.length}>Alias / parked domain</option>
@@ -431,11 +462,20 @@ export default function Domains() {
           <Field label={kind === 'subdomain' ? 'Subdomain name' : kind === 'alias' ? 'Alias domain name' : 'Domain name'}>
             <Input
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => changeName(e.target.value)}
               placeholder={kind === 'subdomain' ? 'blog.example.com' : 'example.com'}
               required
             />
           </Field>
+          {kind !== 'alias' && (
+            <Field label="Alternative domains" hint="Extra hostnames serving the same site, included on the SSL certificate. Space or comma separated — clear to drop www.">
+              <Input
+                value={aliases}
+                onChange={(e) => { setAliases(e.target.value); setAliasesTouched(true) }}
+                placeholder="www.example.com"
+              />
+            </Field>
+          )}
           {kind === 'alias' && (
             <Field label="Alias mode" hint="Mirror serves the same site; redirect forwards visitors to the parent">
               <Select value={aliasMode} onChange={(e) => setAliasMode(e.target.value as typeof aliasMode)}>
@@ -611,6 +651,8 @@ export default function Domains() {
 
       {redirectFor && <RedirectModal domain={redirectFor} onClose={() => setRedirectFor(null)} onSaved={reload} />}
 
+      {aliasFor && <AliasesModal domain={aliasFor} onClose={() => setAliasFor(null)} onSaved={reload} />}
+
       {phpFor && <PHPSettingsModal domain={phpFor} onClose={() => setPhpFor(null)} />}
 
       {protectedFor && <ProtectedModal domain={protectedFor} onClose={() => setProtectedFor(null)} />}
@@ -668,6 +710,48 @@ function RedirectModal({ domain, onClose, onSaved }: { domain: Domain; onClose: 
             {busy ? 'Saving…' : 'Save'}
           </Btn>
         </div>
+      </div>
+    </Modal>
+  )
+}
+
+function AliasesModal({ domain, onClose, onSaved }: { domain: Domain; onClose: () => void; onSaved: () => void }) {
+  const [aliases, setAliases] = useState((domain.aliases ?? []).join(' '))
+  const [busy, setBusy] = useState(false)
+
+  const save = async () => {
+    setBusy(true)
+    try {
+      await api.post(`/api/domains/${domain.id}/aliases`, { aliases: aliases.split(/[\s,]+/).filter(Boolean) })
+      toast('Alternative domains saved')
+      onSaved()
+      onClose()
+    } catch (e) {
+      toast((e as Error).message, 'err')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal open title={`Alternative domains — ${domain.name}`} onClose={onClose}>
+      <p className="text-sm text-slate-500 mb-4">
+        Extra hostnames that serve this same site (added as <code>server_name</code> / <code>ServerAlias</code> entries and
+        included on the SSL certificate). Add as many as you like, or remove <code>www.</code> — one per line, or space/comma
+        separated. Re-issue SSL after changing these to cover the new names.
+      </p>
+      <Field label="Hostnames">
+        <textarea
+          value={aliases}
+          onChange={(e) => setAliases(e.target.value)}
+          placeholder={`www.${domain.name}`}
+          spellCheck={false}
+          className="w-full h-28 rounded-md border border-slate-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 bg-white"
+        />
+      </Field>
+      <div className="flex justify-end gap-2 mt-2">
+        <Btn type="button" variant="secondary" onClick={onClose}>Cancel</Btn>
+        <Btn type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</Btn>
       </div>
     </Modal>
   )

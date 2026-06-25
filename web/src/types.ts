@@ -260,6 +260,7 @@ export interface Domain {
   parent?: string // parent domain name (for subdomains/aliases)
   redirect_url?: string
   redirect_code?: number
+  aliases?: string[] // extra hostnames pointing at the same site (e.g. www.<name>)
 }
 
 export interface PHPSettings {

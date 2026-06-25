@@ -21,12 +21,13 @@ func redirectVhostNginx(d models.Domain, ssl bool, certPath, keyPath string) str
 	target := strings.TrimRight(d.RedirectURL, "/")
 	code := redirectCode(d.RedirectCode)
 	var b strings.Builder
+	names := serverNames(d)
 	fmt.Fprintf(&b, "# Managed by RePanel — redirect to %s\n", target)
-	fmt.Fprintf(&b, "server {\n    listen 80;\n    listen [::]:80;\n    server_name %s www.%s;\n", d.Name, d.Name)
+	fmt.Fprintf(&b, "server {\n    listen 80;\n    listen [::]:80;\n    server_name %s;\n", names)
 	fmt.Fprintf(&b, "    location /.well-known/acme-challenge/ { root %s; }\n", d.DocumentRoot)
 	fmt.Fprintf(&b, "    location / { return %d %s$request_uri; }\n}\n", code, target)
 	if ssl && certPath != "" {
-		fmt.Fprintf(&b, "\nserver {\n    listen 443 ssl;\n    listen [::]:443 ssl;\n    http2 on;\n    server_name %s www.%s;\n", d.Name, d.Name)
+		fmt.Fprintf(&b, "\nserver {\n    listen 443 ssl;\n    listen [::]:443 ssl;\n    http2 on;\n    server_name %s;\n", names)
 		fmt.Fprintf(&b, "    ssl_certificate     %s;\n    ssl_certificate_key %s;\n", certPath, keyPath)
 		fmt.Fprintf(&b, "    location / { return %d %s$request_uri; }\n}\n", code, target)
 	}
@@ -41,11 +42,12 @@ func redirectVhostApache(d models.Domain, ssl bool, certPath, keyPath string) st
 		permanent = "temp"
 	}
 	var b strings.Builder
+	alias := apacheAliasLine(d)
 	fmt.Fprintf(&b, "# Managed by RePanel — redirect to %s\n", target)
-	fmt.Fprintf(&b, "<VirtualHost *:80>\n    ServerName %s\n    ServerAlias www.%s\n", d.Name, d.Name)
+	fmt.Fprintf(&b, "<VirtualHost *:80>\n    ServerName %s\n%s", d.Name, alias)
 	fmt.Fprintf(&b, "    Redirect %s / %s/\n</VirtualHost>\n", permanent, target)
 	if ssl && certPath != "" {
-		fmt.Fprintf(&b, "\n<VirtualHost *:443>\n    ServerName %s\n    ServerAlias www.%s\n", d.Name, d.Name)
+		fmt.Fprintf(&b, "\n<VirtualHost *:443>\n    ServerName %s\n%s", d.Name, alias)
 		fmt.Fprintf(&b, "    SSLEngine on\n    SSLCertificateFile    %s\n    SSLCertificateKeyFile %s\n", certPath, keyPath)
 		fmt.Fprintf(&b, "    Redirect %s / %s/\n</VirtualHost>\n", permanent, target)
 	}

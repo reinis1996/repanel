@@ -234,6 +234,7 @@ func (ws *WebServer) writeNodeVhost(d models.Domain, certPath, keyPath string) e
 	}
 	if err := writeNginxNodeVhost(ws.NginxDir, nodeVhostData{
 		Name:         d.Name,
+		ServerNames:  serverNames(d),
 		DocumentRoot: d.DocumentRoot,
 		SSL:          d.SSL && certPath != "",
 		CertPath:     certPath,

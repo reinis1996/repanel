@@ -370,6 +370,13 @@ CREATE TABLE IF NOT EXISTS functions (
 	// Structured, owner-editable per-domain PHP settings (JSON), rendered into the
 	// PHP-FPM pool as php_admin_value lines. Distinct from the admin raw php_conf.
 	db.Exec(`ALTER TABLE domains ADD COLUMN php_settings TEXT NOT NULL DEFAULT ''`)
+	// Extra hostnames pointing at the same site (space-separated), rendered as
+	// additional server_name / ServerAlias entries and certificate SAN hosts.
+	// Backfill www.<name> only on first add (ALTER succeeds), so we don't clobber
+	// a primary whose aliases an owner has since cleared.
+	if _, err := db.Exec(`ALTER TABLE domains ADD COLUMN aliases TEXT NOT NULL DEFAULT ''`); err == nil {
+		db.Exec(`UPDATE domains SET aliases = 'www.' || name WHERE kind = 'primary'`)
+	}
 	// Per-zone DNSSEC signing flag (BIND inline-signing via dnssec-policy).
 	db.Exec(`ALTER TABLE dns_zones ADD COLUMN dnssec INTEGER NOT NULL DEFAULT 0`)
 	// Per-account resource limits (0 = unlimited), the counts a hosting operator

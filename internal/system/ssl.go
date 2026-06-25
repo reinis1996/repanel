@@ -304,9 +304,10 @@ func setConfigValues(path string, kv map[string]string) error {
 	return os.WriteFile(path, []byte(out.String()), 0o644)
 }
 
-// IssueSelfSigned generates a 1-year self-signed certificate, used as a
-// fallback and for the panel's own HTTPS endpoint.
-func IssueSelfSigned(dataDir, domain string) (certPath, keyPath string, notAfter time.Time, err error) {
+// IssueSelfSigned generates a 1-year self-signed certificate covering domain
+// plus any extra SAN hosts (e.g. www.<domain>). Used as a fallback and for the
+// panel's own HTTPS endpoint.
+func IssueSelfSigned(dataDir, domain string, extraHosts ...string) (certPath, keyPath string, notAfter time.Time, err error) {
 	dir := CertDir(dataDir, domain)
 	if err = os.MkdirAll(dir, 0o750); err != nil {
 		return
@@ -324,7 +325,7 @@ func IssueSelfSigned(dataDir, domain string) (certPath, keyPath string, notAfter
 		NotAfter:     notAfter,
 		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		DNSNames:     []string{domain, "www." + domain},
+		DNSNames:     append([]string{domain}, extraHosts...),
 	}
 	der, err := x509.CreateCertificate(rand.Reader, &tmpl, &tmpl, &key.PublicKey, key)
 	if err != nil {

@@ -286,6 +286,10 @@ type Domain struct {
 	Suspended    bool      `json:"suspended"`
 	WebMode      string    `json:"web_mode"` // nginx | apache | nginx-apache
 	CreatedAt    time.Time `json:"created_at"`
+	// Aliases are extra hostnames that point at the same site — additional
+	// server_name / ServerAlias entries and SAN hosts on the certificate (e.g.
+	// www.<name>). Stored space-separated in the DB.
+	Aliases []string `json:"aliases"`
 	// Domain kind: "primary" (default), "subdomain" or "alias" (parked). ParentID
 	// is the owning primary domain for subdomains/aliases.
 	Kind     string `json:"kind"`

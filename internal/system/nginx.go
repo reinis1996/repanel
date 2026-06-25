@@ -22,7 +22,7 @@ var nginxDirectTemplate = template.Must(template.New("vhost").Parse(`# Managed b
 server {
     listen 80;
     listen [::]:80;
-    server_name {{.Name}} www.{{.Name}};
+    server_name {{.ServerNames}};
 
 {{- if .SSL}}
     location /.well-known/acme-challenge/ { root {{.DocumentRoot}}; }
@@ -33,7 +33,7 @@ server {
     listen 443 ssl;
     listen [::]:443 ssl;
     http2 on;
-    server_name {{.Name}} www.{{.Name}};
+    server_name {{.ServerNames}};
 
     ssl_certificate     {{.CertPath}};
     ssl_certificate_key {{.KeyPath}};
@@ -85,7 +85,7 @@ var nginxProxyTemplate = template.Must(template.New("vhostproxy").Parse(`# Manag
 server {
     listen 80;
     listen [::]:80;
-    server_name {{.Name}} www.{{.Name}};
+    server_name {{.ServerNames}};
 
 {{- if .SSL}}
     location /.well-known/acme-challenge/ { root {{.DocumentRoot}}; }
@@ -96,7 +96,7 @@ server {
     listen 443 ssl;
     listen [::]:443 ssl;
     http2 on;
-    server_name {{.Name}} www.{{.Name}};
+    server_name {{.ServerNames}};
 
     ssl_certificate     {{.CertPath}};
     ssl_certificate_key {{.KeyPath}};
@@ -148,6 +148,8 @@ server {
 
 type vhostData struct {
 	Name         string
+	ServerNames  string // space-separated name + aliases, for nginx server_name
+	AliasLine    string // space-separated aliases only, for Apache ServerAlias
 	DocumentRoot string
 	PHPVersion   string
 	PoolName     string
@@ -186,6 +188,12 @@ php_admin_value[open_basedir] = {{.DocumentRoot}}:/tmp
 {{- end}}
 `))
 
+// serverNames returns the space-separated server_name list for a domain: its
+// own name followed by any alternative hostnames.
+func serverNames(d models.Domain) string {
+	return strings.Join(append([]string{d.Name}, d.Aliases...), " ")
+}
+
 // poolName converts a domain to a safe pool/socket identifier.
 func poolName(domain string) string {
 	return strings.NewReplacer(".", "_", "-", "_").Replace(domain)
@@ -214,6 +222,8 @@ func proxyPassBlock(backendPort int) string {
 func vhostDataFor(d models.Domain, ssl bool, certPath, keyPath string, backendPort int, serveStatic bool) vhostData {
 	return vhostData{
 		Name:         d.Name,
+		ServerNames:  serverNames(d),
+		AliasLine:    strings.Join(d.Aliases, " "),
 		DocumentRoot: d.DocumentRoot,
 		PHPVersion:   d.PHPVersion,
 		PoolName:     poolName(d.Name),
@@ -339,7 +349,7 @@ var nodeVhostTemplate = template.Must(template.New("nodevhost").Parse(`# Managed
 server {
     listen 80;
     listen [::]:80;
-    server_name {{.Name}} www.{{.Name}};
+    server_name {{.ServerNames}};
     location /.well-known/acme-challenge/ { root {{.DocumentRoot}}; }
 {{- if .SSL}}
     location / { return 301 https://$host$request_uri; }
@@ -349,7 +359,7 @@ server {
     listen 443 ssl;
     listen [::]:443 ssl;
     http2 on;
-    server_name {{.Name}} www.{{.Name}};
+    server_name {{.ServerNames}};
 
     ssl_certificate     {{.CertPath}};
     ssl_certificate_key {{.KeyPath}};
@@ -381,6 +391,7 @@ server {
 
 type nodeVhostData struct {
 	Name         string
+	ServerNames  string // space-separated name + aliases, for nginx server_name
 	DocumentRoot string
 	SSL          bool
 	CertPath     string
@@ -409,10 +420,10 @@ func writeNginxSuspended(nginxDir string, d models.Domain) error {
 server {
     listen 80;
     listen [::]:80;
-    server_name %s www.%s;
+    server_name %s;
     location / { return 503; }
 }
-`, d.Name, d.Name)
+`, serverNames(d))
 	confDir := nginxConfDir(nginxDir)
 	if err := os.MkdirAll(confDir, 0o755); err != nil {
 		return err
