@@ -217,11 +217,6 @@ mail_gid = vmail
 first_valid_uid = 5000
 last_valid_uid = 5000
 
-# Look users up by their full address. The stock 2.4 default strips the domain
-# (%{user | username}), so LMTP delivery to info@example.com would look up "info"
-# and miss the passwd-file (keyed by the full address) — "User doesn't exist".
-auth_username_format = %{user | lower}
-
 passdb passwd-file {
   passwd_file_path = ` + passwd + `
   default_password_scheme = SHA512-CRYPT
@@ -252,6 +247,11 @@ service lmtp {
 }
 
 protocol lmtp {
+  # Resolve recipients by full address. The stock 2.4 protocol-lmtp default strips
+  # the domain (%{user | username}), so delivery to info@example.com would look up
+  # "info" and miss the passwd-file (keyed by the full address) — "User doesn't
+  # exist". A global setting can't override this per-protocol one, so set it here.
+  auth_username_format = %{user | lower}
   mail_plugins {
     sieve = yes
   }
