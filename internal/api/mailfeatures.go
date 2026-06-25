@@ -20,10 +20,12 @@ func (s *Server) SyncMailDelivery() {
 		// Non-fatal: mail keeps working on the previous delivery config.
 		s.fail0("ensure mail delivery", err)
 	}
-	// Keep Postfix's identity aligned with the configured panel hostname (when it
-	// is a FQDN), so existing installs pick this up on the next start.
+	// Keep Postfix's identity and the system hostname aligned with the configured
+	// panel hostname (when it is a FQDN), so existing installs pick this up on the
+	// next start.
 	if h := strings.TrimSpace(s.DB.Setting("panel_hostname")); strings.Contains(h, ".") {
 		s.fail0("set mail hostname", system.SetMailHostname(h))
+		s.fail0("set system hostname", system.SetSystemHostname(h))
 	}
 }
 

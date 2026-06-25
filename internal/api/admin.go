@@ -273,6 +273,7 @@ func (s *Server) handleSettingsSet(w http.ResponseWriter, r *http.Request, _ *mo
 				s.fail(w, "set mail hostname", err)
 				return
 			}
+			s.fail0("set system hostname", system.SetSystemHostname(h)) // best-effort
 		}
 	}
 	if resolverChanged {
