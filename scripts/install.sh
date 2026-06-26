@@ -496,6 +496,21 @@ if [ "${WITH_WEBMAIL:-0}" = 1 ]; then
       # contend on the session table ("database is locked"), stalling webmail.
       grep -q "session_storage" "$RC_CONF" || echo "\$config['session_storage'] = 'php';" >> "$RC_CONF"
     fi
+    # Roundcube runs in the shared default PHP-FPM www pool. The distro default
+    # of 5 children starves under the Elastic skin's parallel polling: each
+    # request holds a worker while serialized on PHP's per-session file lock, so
+    # five concurrent polls fill the pool and the next one waits past nginx's
+    # upstream timeout (504). Give the pool real headroom.
+    WWW_POOL="/etc/php/$PHP_VER/fpm/pool.d/www.conf"
+    if [ -f "$WWW_POOL" ]; then
+      sed -i \
+        -e 's/^pm.max_children = .*/pm.max_children = 30/' \
+        -e 's/^pm.start_servers = .*/pm.start_servers = 6/' \
+        -e 's/^pm.min_spare_servers = .*/pm.min_spare_servers = 4/' \
+        -e 's/^pm.max_spare_servers = .*/pm.max_spare_servers = 12/' \
+        "$WWW_POOL"
+      systemctl restart "php$PHP_VER-fpm" >/dev/null 2>&1 || true
+    fi
     say "Roundcube installed — enable webmail per domain from the Mail page"
   else
     say "WARNING: Roundcube install failed — webmail will be unavailable"
